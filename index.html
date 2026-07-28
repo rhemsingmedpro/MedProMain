@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MedPro Respiratory Care | Staff Portal</title>
+<style>
+  :root {
+    --navy: #003D79;
+    --navy-dark: #002B57;
+    --green: #50B948;
+    --green-dark: #3d9636;
+    --bg: #F4F7FA;
+    --card-bg: #FFFFFF;
+    --text: #1D2B3A;
+    --text-muted: #5A6B7B;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    min-height: 100%;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background:
+      radial-gradient(1200px 600px at 15% -10%, rgba(80,185,72,0.10), transparent 60%),
+      radial-gradient(1200px 700px at 110% 10%, rgba(0,61,121,0.10), transparent 55%),
+      var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header {
+    padding: 40px 24px 20px;
+    text-align: center;
+  }
+
+  .logo-wrap {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 18px;
+  }
+
+  .logo-wrap img {
+    height: 56px;
+    width: auto;
+  }
+
+  header h1 {
+    margin: 0 0 6px;
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    color: var(--navy);
+  }
+
+  header p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.98rem;
+  }
+
+  main {
+    flex: 1;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 20px 20px 60px;
+  }
+
+  .grid {
+    width: 100%;
+    max-width: 920px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 22px;
+  }
+
+  @media (max-width: 760px) {
+    .grid {
+      grid-template-columns: 1fr;
+      max-width: 420px;
+    }
+  }
+
+  a.card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    background: var(--card-bg);
+    border-radius: 14px;
+    padding: 28px 24px 24px;
+    text-decoration: none;
+    color: var(--text);
+    box-shadow: 0 1px 2px rgba(16, 30, 54, 0.06), 0 8px 24px rgba(16, 30, 54, 0.06);
+    border: 1px solid rgba(16, 30, 54, 0.06);
+    border-top: 4px solid var(--navy);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    min-height: 190px;
+  }
+
+  a.card:nth-child(2) { border-top-color: var(--green); }
+  a.card:nth-child(3) { border-top-color: var(--navy); }
+
+  a.card:hover, a.card:focus-visible {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 10px rgba(16, 30, 54, 0.08), 0 16px 32px rgba(16, 30, 54, 0.10);
+  }
+
+  a.card:focus-visible {
+    outline: 3px solid var(--green);
+    outline-offset: 2px;
+  }
+
+  .icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+    background: rgba(0, 61, 121, 0.08);
+  }
+
+  a.card:nth-child(2) .icon { background: rgba(80, 185, 72, 0.12); }
+
+  .icon svg {
+    width: 22px;
+    height: 22px;
+    stroke: var(--navy);
+  }
+
+  a.card:nth-child(2) .icon svg { stroke: var(--green-dark); }
+
+  .card-title {
+    font-size: 1.08rem;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 6px;
+  }
+
+  .card-desc {
+    font-size: 0.88rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+  }
+
+  .card-arrow {
+    margin-top: 18px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--green-dark);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .card-arrow svg {
+    width: 14px;
+    height: 14px;
+    stroke: var(--green-dark);
+    transition: transform 0.18s ease;
+  }
+
+  a.card:hover .card-arrow svg {
+    transform: translateX(3px);
+  }
+
+  footer {
+    text-align: center;
+    padding: 18px 20px 30px;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-wrap">
+    <img src="data:image/png;base64,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" alt="MedPro Respiratory Care logo">
+  </div>
+  <h1>Staff Portal</h1>
+  <p>Quick access to field and office tools</p>
+</header>
+
+<main>
+  <div class="grid">
+
+    <a class="card" href="https://script.google.com/macros/s/AKfycbyaP4j2DI3VFDw0-5Pd7tbmv2cD2-zlrmmvmL9ofoGgD9fK__Bd-6X8e9QMiBG7gyuJWg/exec" target="_blank" rel="noopener noreferrer">
+      <div>
+        <div class="icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="8" y1="6" x2="21" y2="6"></line>
+            <line x1="8" y1="12" x2="21" y2="12"></line>
+            <line x1="8" y1="18" x2="21" y2="18"></line>
+            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+          </svg>
+        </div>
+        <div class="card-title">OVP List</div>
+        <div class="card-desc">Field task list for annual oxygen &amp; equipment services.</div>
+      </div>
+      <div class="card-arrow">Open<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></div>
+    </a>
+
+    <a class="card" href="https://rhemsingmedpro.github.io/MedProEHBForms/" target="_blank" rel="noopener noreferrer">
+      <div>
+        <div class="icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="9" y1="13" x2="15" y2="13"></line>
+            <line x1="9" y1="17" x2="15" y2="17"></line>
+          </svg>
+        </div>
+        <div class="card-title">EHB Forms - Electronic</div>
+        <div class="card-desc">Submit Home &amp; Equipment Billing forms electronically.</div>
+      </div>
+      <div class="card-arrow">Open<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></div>
+    </a>
+
+    <a class="card" href="https://rhemsingmedpro.github.io/medpro-timesheet/" target="_blank" rel="noopener noreferrer">
+      <div>
+        <div class="icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+        </div>
+        <div class="card-title">Timesheet Submission</div>
+        <div class="card-desc">Submit and track your hours for payroll.</div>
+      </div>
+      <div class="card-arrow">Open<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></div>
+    </a>
+
+  </div>
+</main>
+
+<footer>
+  MedPro Respiratory Care &mdash; Internal Staff Tools
+</footer>
+
+</body>
+</html>
