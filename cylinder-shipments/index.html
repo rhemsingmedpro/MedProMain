@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MedPro Cylinder Shipment Tracker</title>
+<style>
+  :root {
+    --navy: #003D79;
+    --navy-dark: #00274F;
+    --green: #50B948;
+    --green-dark: #3CA55C;
+    --bg: #F4F6F8;
+    --card: #FFFFFF;
+    --border: #DDE3EA;
+    --text: #1C2733;
+    --text-muted: #5A6B7B;
+    --amber: #E8A415;
+    --amber-bg: #FFF6E2;
+    --red: #C4402A;
+    --red-bg: #FBEAE6;
+    --green-bg: #EAF7E9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  header {
+    background: var(--navy);
+    color: white;
+    padding: 18px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  header h1 {
+    font-size: 1.25rem;
+    margin: 0;
+    font-weight: 600;
+  }
+  header .sub {
+    font-size: 0.8rem;
+    opacity: 0.8;
+    margin-top: 2px;
+  }
+  .status-pill {
+    font-size: 0.75rem;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.15);
+  }
+  main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    margin-bottom: 20px;
+  }
+  .card h2 {
+    font-size: 1rem;
+    margin: 0 0 14px 0;
+    color: var(--navy);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    align-items: end;
+  }
+  label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+  input, select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-family: inherit;
+    background: white;
+    color: var(--text);
+  }
+  input:focus, select:focus {
+    outline: none;
+    border-color: var(--navy);
+    box-shadow: 0 0 0 2px rgba(0,61,121,0.15);
+  }
+  button {
+    cursor: pointer;
+    border: none;
+    border-radius: 6px;
+    padding: 9px 16px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    font-family: inherit;
+  }
+  .btn-primary {
+    background: var(--green);
+    color: white;
+  }
+  .btn-primary:hover { background: var(--green-dark); }
+  .btn-secondary {
+    background: white;
+    color: var(--navy);
+    border: 1px solid var(--navy);
+  }
+  .btn-secondary:hover { background: #EEF3F8; }
+  .btn-small {
+    padding: 5px 10px;
+    font-size: 0.75rem;
+  }
+  .filters {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    align-items: end;
+    margin-bottom: 14px;
+  }
+  .filters > div { min-width: 160px; }
+  .shipment-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 65vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-right: 2px;
+  }
+  .shipment-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(0,61,121,0.08);
+  }
+  .shipment-card:hover, .shipment-card:active { background: #F8FAFC; }
+  .shipment-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+  .shipment-card-tracking {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+  }
+  .shipment-card-route {
+    font-weight: 700;
+    font-size: 0.95rem;
+  }
+  .shipment-card-meta {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+  .badge {
+    display: inline-block;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+  }
+  .badge-received { background: var(--green-bg); color: var(--green-dark); }
+  .badge-outstanding { background: var(--amber-bg); color: #8A6110; }
+  .badge-overdue { background: var(--red-bg); color: var(--red); }
+
+  /* Detail sheet */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(20,30,40,0.45);
+    z-index: 60;
+    align-items: flex-end;
+    justify-content: center;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal-sheet {
+    background: var(--card);
+    width: 100%;
+    max-width: 480px;
+    max-height: 88vh;
+    overflow-y: auto;
+    border-radius: 16px 16px 0 0;
+    padding: 18px 20px 28px;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.2);
+  }
+  @media (min-width: 620px) {
+    .modal-overlay { align-items: center; }
+    .modal-sheet { border-radius: 12px; max-height: 85vh; }
+  }
+  .detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 14px;
+  }
+  .detail-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-top: 6px;
+  }
+  .detail-close {
+    background: none;
+    border: none;
+    font-size: 1.4rem;
+    line-height: 1;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 4px 6px;
+  }
+  .detail-section-title {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 700;
+    color: white;
+    background: var(--navy);
+    padding: 5px 10px;
+    border-radius: 6px;
+    margin: 16px 0 10px;
+  }
+  .detail-section-return { background: var(--green-dark); }
+  .detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 14px;
+    background: #F8FAFC;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .detail-grid > div {
+    display: flex;
+    flex-direction: column;
+  }
+  .detail-label {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+  .detail-value {
+    font-size: 0.92rem;
+    font-weight: 600;
+    word-break: break-word;
+  }
+  .detail-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .detail-form-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+  .toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: var(--navy-dark);
+    color: white;
+    padding: 12px 18px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.25s ease;
+    pointer-events: none;
+    z-index: 50;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.error { background: var(--red); }
+  .empty-state {
+    text-align: center;
+    padding: 30px;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+  }
+  .admin-toggle {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 0;
+  }
+  .admin-panel {
+    display: none;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px dashed var(--border);
+    gap: 10px;
+  }
+  .admin-panel.show { display: flex; flex-wrap: wrap; }
+  .admin-panel .row {
+    display: flex;
+    gap: 8px;
+    align-items: end;
+  }
+  .config-warning {
+    background: var(--amber-bg);
+    color: #8A6110;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    margin-bottom: 20px;
+    display: none;
+  }
+  .config-warning.show { display: block; }
+  code {
+    background: #EEF3F8;
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 0.85em;
+  }
+  .spinner {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid rgba(255,255,255,0.4);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .count-summary {
+    display: flex;
+    gap: 18px;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    flex-wrap: wrap;
+  }
+  .count-summary b { color: var(--text); }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Cylinder Shipment Tracker</h1>
+    <div class="sub">MedPro Respiratory Care</div>
+  </div>
+  <div class="status-pill" id="connectionStatus">Connecting…</div>
+</header>
+
+<main>
+
+  <div class="config-warning" id="configWarning">
+    ⚠️ This app isn't connected to a Google Sheet yet. Open <code>index.html</code> and set <code>API_URL</code>
+    at the top of the script to your deployed Apps Script web app URL.
+  </div>
+
+  <div class="card">
+    <h2>Log a New Shipment</h2>
+    <form id="shipmentForm">
+      <div class="form-grid">
+        <div>
+          <label for="office">Office</label>
+          <select id="office" required></select>
+        </div>
+        <div>
+          <label for="destination">Sent To</label>
+          <select id="destination" required></select>
+        </div>
+        <div>
+          <label for="dateSent">Date Sent</label>
+          <input type="date" id="dateSent" required>
+        </div>
+        <div>
+          <label for="racks"># Racks</label>
+          <input type="text" inputmode="numeric" pattern="[0-9]*" id="racks" required>
+        </div>
+        <div>
+          <label for="eCylinder">E Cylinders</label>
+          <input type="text" inputmode="numeric" pattern="[0-9]*" id="eCylinder">
+        </div>
+        <div>
+          <label for="dCylinder">D Cylinders</label>
+          <input type="text" inputmode="numeric" pattern="[0-9]*" id="dCylinder">
+        </div>
+        <div>
+          <label for="cCylinder">C Cylinders</label>
+          <input type="text" inputmode="numeric" pattern="[0-9]*" id="cCylinder">
+        </div>
+        <div>
+          <label for="m6Cylinder">M6 Cylinders</label>
+          <input type="text" inputmode="numeric" pattern="[0-9]*" id="m6Cylinder">
+        </div>
+        <div>
+          <label for="shipper">Shipper (Your Name)</label>
+          <input type="text" id="shipper" required>
+        </div>
+        <div>
+          <label for="trackingNumber">Tracking #</label>
+          <input type="text" inputmode="numeric" pattern="[0-9]*" id="trackingNumber" required>
+        </div>
+        <div>
+          <button type="submit" class="btn-primary" id="submitBtn">Log Shipment</button>
+        </div>
+      </div>
+    </form>
+    <div style="margin-top:14px;">
+      <button type="button" class="admin-toggle" id="adminToggle">+ Add a new office / destination</button>
+      <div class="admin-panel" id="adminPanel">
+        <div class="row">
+          <div>
+            <label for="newOffice">New Office Name</label>
+            <input type="text" id="newOffice" placeholder="e.g. Fort St. John">
+          </div>
+          <button type="button" class="btn-secondary btn-small" id="addOfficeBtn">Add Office</button>
+        </div>
+        <div class="row">
+          <div>
+            <label for="newDestination">New Destination Name</label>
+            <input type="text" id="newDestination" placeholder="e.g. Messer - Kelowna">
+          </div>
+          <button type="button" class="btn-secondary btn-small" id="addDestinationBtn">Add Destination</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Shipments</h2>
+    <div class="filters">
+      <div>
+        <label for="filterOffice">Filter by Office</label>
+        <select id="filterOffice"><option value="">All Offices</option></select>
+      </div>
+      <div>
+        <label for="filterStatus">Filter by Status</label>
+        <select id="filterStatus">
+          <option value="">All Statuses</option>
+          <option value="outstanding" selected>Outstanding (incl. overdue)</option>
+          <option value="overdue">Overdue only (&gt;7 days)</option>
+          <option value="received">Received</option>
+        </select>
+      </div>
+      <div>
+        <button type="button" class="btn-secondary" id="refreshBtn">Refresh</button>
+      </div>
+      <div class="count-summary" id="countSummary"></div>
+    </div>
+
+    <div class="shipment-list" id="shipmentsList">
+      <div class="empty-state">Loading shipments…</div>
+    </div>
+  </div>
+
+</main>
+
+<div class="modal-overlay" id="detailOverlay" onclick="if (event.target === this) closeDetail()">
+  <div class="modal-sheet">
+    <div id="detailContent"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="confirmOverlay" style="z-index:70; align-items:center;" onclick="if (event.target === this) closeConfirm()">
+  <div class="modal-sheet" style="max-width:380px;">
+    <div id="confirmContent"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   CONFIGURE THIS: paste your deployed Apps Script Web App URL
+   ============================================================ */
+const API_URL = 'https://script.google.com/macros/s/AKfycbyGStUXfbGMwtBr4aUOWWf27kc_b6z4-PZcya2e2mmhixCYjFug5Yfwu8ACG_XmmzrmRw/exec';
+
+
+const DEFAULT_OFFICES = ['FSJ', 'PG', 'Kamloops', 'Kelowna', 'Cranbrook', 'Castlegar'];
+const DEFAULT_DESTINATIONS = ['Messer - Langley', 'Messer - Calgary'];
+const OVERDUE_DAYS = 7;
+
+const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+// Formats a date for display as dd-MMM-yyyy. Accepts either a plain
+// "yyyy-MM-dd" string or a full ISO timestamp — only the date portion is
+// ever used, so timezone conversion can't shift it by a day.
+function formatDateDisplay(dateStr) {
+  if (!dateStr) return '';
+  const datePart = String(dateStr).slice(0, 10); // "yyyy-MM-dd"
+  const parts = datePart.split('-');
+  if (parts.length !== 3) return dateStr;
+  const [y, m, d] = parts.map(Number);
+  if (!y || !m || !d) return dateStr;
+  return `${String(d).padStart(2, '0')}-${MONTH_ABBR[m - 1]}-${y}`;
+}
+
+let state = {
+  shipments: [],
+  offices: [],
+  destinations: []
+};
+
+function isConfigured() {
+  return API_URL && API_URL.indexOf('PASTE_YOUR') === -1;
+}
+
+function showToast(message, isError) {
+  const toast = document.getElementById('toast');
+  toast.textContent = message;
+  toast.className = 'toast show' + (isError ? ' error' : '');
+  setTimeout(() => { toast.className = 'toast'; }, 3200);
+}
+
+function daysBetween(dateStr) {
+  const d = new Date(dateStr);
+  const now = new Date();
+  return Math.floor((now - d) / (1000 * 60 * 60 * 24));
+}
+
+function getStatus(shipment) {
+  if (shipment.DateReceivedBack) return 'received';
+  const days = daysBetween(shipment.DateSent);
+  return days > OVERDUE_DAYS ? 'overdue' : 'outstanding';
+}
+
+function statusBadge(status) {
+  if (status === 'received') return '<span class="badge badge-received">Received</span>';
+  if (status === 'overdue') return '<span class="badge badge-overdue">Overdue</span>';
+  return '<span class="badge badge-outstanding">Outstanding</span>';
+}
+
+// Shows a received count next to what was sent, flagging it if short.
+function receivedCountCell(sentVal, receivedVal) {
+  const sentParsed = parseInt(sentVal, 10);
+  const sent = isNaN(sentParsed) ? 0 : sentParsed;
+
+  if (receivedVal === '' || receivedVal === undefined || receivedVal === null) return '—';
+
+  const receivedParsed = parseInt(receivedVal, 10);
+  const received = isNaN(receivedParsed) ? 0 : receivedParsed;
+
+  if (received < sent) {
+    return `<span class="badge badge-overdue" title="Sent ${sent}, received ${received}">${received} / ${sent}</span>`;
+  }
+  return `${received}`;
+}
+
+async function loadData() {
+  const connEl = document.getElementById('connectionStatus');
+  if (!isConfigured()) {
+    document.getElementById('configWarning').classList.add('show');
+    connEl.textContent = 'Not connected';
+    populateDropdowns(DEFAULT_OFFICES, DEFAULT_DESTINATIONS);
+    renderList();
+    return;
+  }
+  connEl.innerHTML = '<span class="spinner"></span> Loading…';
+  try {
+    const res = await fetch(API_URL);
+    const data = await res.json();
+    state.shipments = data.shipments || [];
+    state.offices = (data.offices && data.offices.length) ? data.offices : DEFAULT_OFFICES;
+    state.destinations = (data.destinations && data.destinations.length) ? data.destinations : DEFAULT_DESTINATIONS;
+    populateDropdowns(state.offices, state.destinations);
+    renderList();
+    connEl.textContent = 'Connected';
+  } catch (err) {
+    connEl.textContent = 'Connection failed';
+    showToast('Could not load data. Check API_URL and your connection.', true);
+    console.error(err);
+  }
+}
+
+function populateDropdowns(offices, destinations) {
+  const officeSel = document.getElementById('office');
+  const filterOfficeSel = document.getElementById('filterOffice');
+  const destSel = document.getElementById('destination');
+
+  const currentOffice = officeSel.value;
+  const currentFilterOffice = filterOfficeSel.value;
+  const currentDest = destSel.value;
+
+  officeSel.innerHTML = '<option value="" disabled selected>Select office…</option>' +
+    offices.map(o => `<option value="${o}">${o}</option>`).join('');
+  filterOfficeSel.innerHTML = '<option value="">All Offices</option>' +
+    offices.map(o => `<option value="${o}">${o}</option>`).join('');
+  destSel.innerHTML = destinations.map(d => `<option value="${d}">${d}</option>`).join('');
+
+  if (offices.includes(currentOffice)) {
+    officeSel.value = currentOffice;
+  } else {
+    officeSel.value = '';
+  }
+  if (offices.includes(currentFilterOffice)) filterOfficeSel.value = currentFilterOffice;
+  if (destinations.includes(currentDest)) {
+    destSel.value = currentDest;
+  } else if (destinations.includes('Messer - Langley')) {
+    destSel.value = 'Messer - Langley';
+  }
+}
+
+let activeShipmentId = null;
+let editingReturn = false;
+let pendingReturnPayload = null;
+
+function renderList() {
+  const officeFilter = document.getElementById('filterOffice').value;
+  const statusFilter = document.getElementById('filterStatus').value;
+  const listEl = document.getElementById('shipmentsList');
+
+  let rows = state.shipments.map(s => ({ ...s, _status: getStatus(s) }));
+
+  if (officeFilter) rows = rows.filter(r => r.Office === officeFilter);
+  if (statusFilter === 'outstanding') rows = rows.filter(r => r._status === 'outstanding' || r._status === 'overdue');
+  if (statusFilter === 'overdue') rows = rows.filter(r => r._status === 'overdue');
+  if (statusFilter === 'received') rows = rows.filter(r => r._status === 'received');
+
+  // Most recent first — Date Sent primarily, then entry order as a tiebreaker
+  // for same-day shipments.
+  rows.sort((a, b) => {
+    const dateDiff = (b.DateSent || '').localeCompare(a.DateSent || '');
+    if (dateDiff !== 0) return dateDiff;
+    return String(b.Timestamp || '').localeCompare(String(a.Timestamp || ''));
+  });
+
+  const outstandingCount = state.shipments.filter(s => getStatus(s) !== 'received').length;
+  const overdueCount = state.shipments.filter(s => getStatus(s) === 'overdue').length;
+  document.getElementById('countSummary').innerHTML =
+    `<span><b>${state.shipments.length}</b> total</span>` +
+    `<span><b>${outstandingCount}</b> outstanding</span>` +
+    `<span><b>${overdueCount}</b> overdue</span>`;
+
+  if (!rows.length) {
+    listEl.innerHTML = '<div class="empty-state">No shipments match this filter.</div>';
+    return;
+  }
+
+  listEl.innerHTML = rows.map(r => `
+    <div class="shipment-card" onclick="openDetail('${r.ID}')">
+      <div class="shipment-card-top">
+        ${statusBadge(r._status)}
+        <span class="shipment-card-tracking">#${r.TrackingNumber || '—'}</span>
+      </div>
+      <div class="shipment-card-route">${r.Office} → ${r.Destination}</div>
+      <div class="shipment-card-meta">${formatDateDisplay(r.DateSent)} · ${r.Shipper}</div>
+    </div>`).join('');
+}
+
+function buildDetailHTML(s, status) {
+  const sentInfoHTML = `
+    <div class="detail-section-title">Shipment Sent</div>
+    <div class="detail-grid">
+      <div><span class="detail-label">Office</span><span class="detail-value">${s.Office}</span></div>
+      <div><span class="detail-label">Sent To</span><span class="detail-value">${s.Destination}</span></div>
+      <div><span class="detail-label">Date Sent</span><span class="detail-value">${formatDateDisplay(s.DateSent)}</span></div>
+      <div><span class="detail-label">Racks</span><span class="detail-value">${s.Racks}</span></div>
+      <div><span class="detail-label">E Cylinders</span><span class="detail-value">${s.ECylinder}</span></div>
+      <div><span class="detail-label">D Cylinders</span><span class="detail-value">${s.DCylinder}</span></div>
+      <div><span class="detail-label">C Cylinders</span><span class="detail-value">${s.CCylinder}</span></div>
+      <div><span class="detail-label">M6 Cylinders</span><span class="detail-value">${s.M6Cylinder}</span></div>
+      <div><span class="detail-label">Shipper</span><span class="detail-value">${s.Shipper}</span></div>
+      <div><span class="detail-label">Tracking #</span><span class="detail-value">${s.TrackingNumber}</span></div>
+    </div>`;
+
+  const showForm = status !== 'received' || editingReturn;
+  let returnInfoHTML;
+
+  if (!showForm) {
+    // Already received — read-only summary, with an Edit option in case of a mistake.
+    returnInfoHTML = `
+      <div class="detail-section-title detail-section-return">Shipment Returned</div>
+      <div class="detail-grid">
+        <div><span class="detail-label">Return Tracking #</span><span class="detail-value">${s.ReturnTrackingNumber || '—'}</span></div>
+        <div><span class="detail-label">Date Received Back</span><span class="detail-value">${formatDateDisplay(s.DateReceivedBack)}</span></div>
+        <div><span class="detail-label">E Received</span><span class="detail-value">${receivedCountCell(s.ECylinder, s.EReceived)}</span></div>
+        <div><span class="detail-label">D Received</span><span class="detail-value">${receivedCountCell(s.DCylinder, s.DReceived)}</span></div>
+        <div><span class="detail-label">C Received</span><span class="detail-value">${receivedCountCell(s.CCylinder, s.CReceived)}</span></div>
+        <div><span class="detail-label">M6 Received</span><span class="detail-value">${receivedCountCell(s.M6Cylinder, s.M6Received)}</span></div>
+      </div>
+      <button type="button" class="btn-secondary" style="margin-top:10px;" onclick="startEditReturn()">Edit Return Info</button>`;
+  } else {
+    // Editing (or entering for the first time) — pre-fill with whatever was already
+    // saved for the return, falling back to the sent counts as the default.
+    const eDefault = (s.EReceived !== undefined && s.EReceived !== '') ? s.EReceived : (s.ECylinder || 0);
+    const dDefault = (s.DReceived !== undefined && s.DReceived !== '') ? s.DReceived : (s.DCylinder || 0);
+    const cDefault = (s.CReceived !== undefined && s.CReceived !== '') ? s.CReceived : (s.CCylinder || 0);
+    const m6Default = (s.M6Received !== undefined && s.M6Received !== '') ? s.M6Received : (s.M6Cylinder || 0);
+    const dateDefault = s.DateReceivedBack || '';
+    const submitLabel = status === 'received' ? 'Save Changes' : 'Mark Received';
+    const cancelButton = status === 'received'
+      ? `<button type="button" class="btn-secondary" onclick="cancelEditReturn()">Cancel</button>`
+      : '';
+
+    returnInfoHTML = `
+      <div class="detail-section-title detail-section-return">Shipment Returned</div>
+      <div class="detail-form">
+        <div>
+          <label for="modalReturnTracking">Return Tracking #</label>
+          <input type="text" inputmode="numeric" pattern="[0-9]*" id="modalReturnTracking"
+                 value="${s.ReturnTrackingNumber || ''}" placeholder="Enter #"
+                 onchange="autoSaveReturnTracking(this.value)">
+        </div>
+        <div class="detail-form-grid">
+          <div><label for="modalRecvE">E Rec'd</label><input type="text" inputmode="numeric" pattern="[0-9]*" id="modalRecvE" value="${eDefault}"></div>
+          <div><label for="modalRecvD">D Rec'd</label><input type="text" inputmode="numeric" pattern="[0-9]*" id="modalRecvD" value="${dDefault}"></div>
+          <div><label for="modalRecvC">C Rec'd</label><input type="text" inputmode="numeric" pattern="[0-9]*" id="modalRecvC" value="${cDefault}"></div>
+          <div><label for="modalRecvM6">M6 Rec'd</label><input type="text" inputmode="numeric" pattern="[0-9]*" id="modalRecvM6" value="${m6Default}"></div>
+        </div>
+        <div>
+          <label for="modalDateReceived">Date Received Back</label>
+          <input type="date" id="modalDateReceived" value="${dateDefault}">
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="btn-primary" onclick="confirmAndSubmitReturn()">${submitLabel}</button>
+          ${cancelButton}
+        </div>
+      </div>`;
+  }
+
+  return `
+    <div class="detail-header">
+      <div>
+        ${statusBadge(status)}
+        <div class="detail-title">${s.Office} → ${s.Destination}</div>
+      </div>
+      <button type="button" class="detail-close" onclick="closeDetail()" aria-label="Close">&times;</button>
+    </div>
+    ${sentInfoHTML}
+    ${returnInfoHTML}
+  `;
+}
+
+function renderDetailContent() {
+  const s = state.shipments.find(r => r.ID === activeShipmentId);
+  if (!s) return;
+  document.getElementById('detailContent').innerHTML = buildDetailHTML(s, getStatus(s));
+}
+
+function startEditReturn() {
+  editingReturn = true;
+  renderDetailContent();
+}
+
+function cancelEditReturn() {
+  editingReturn = false;
+  renderDetailContent();
+}
+
+function openDetail(id) {
+  const s = state.shipments.find(r => r.ID === id);
+  if (!s) return;
+  activeShipmentId = id;
+  editingReturn = false;
+  renderDetailContent();
+  document.getElementById('detailOverlay').classList.add('show');
+}
+
+function closeDetail() {
+  document.getElementById('detailOverlay').classList.remove('show');
+  activeShipmentId = null;
+  editingReturn = false;
+}
+
+async function autoSaveReturnTracking(value) {
+  const id = activeShipmentId;
+  const returnTrackingNumber = value.trim();
+
+  if (!isConfigured()) {
+    showToast('Connect the app to a Google Sheet first (see banner above).', true);
+    return;
+  }
+
+  try {
+    const res = await postAction({
+      action: 'updateReturn',
+      data: { id, returnTrackingNumber }
+    });
+    if (res.success) {
+      showToast('Return tracking # saved.');
+    } else {
+      showToast(res.error || 'Could not save tracking #.', true);
+    }
+  } catch (err) {
+    showToast('Network error saving tracking #.', true);
+    console.error(err);
+  }
+}
+
+function getFieldOrDefault(inputId, fallback) {
+  const el = document.getElementById(inputId);
+  const val = el ? el.value.trim() : '';
+  return val === '' ? fallback : val;
+}
+
+function confirmAndSubmitReturn() {
+  const id = activeShipmentId;
+  const s = state.shipments.find(r => r.ID === id);
+  if (!s) return;
+
+  const trackInput = document.getElementById('modalReturnTracking');
+  const dateInput = document.getElementById('modalDateReceived');
+  const returnTrackingNumber = trackInput.value.trim();
+
+  if (!dateInput.value) {
+    dateInput.value = new Date().toISOString().slice(0, 10);
+  }
+  const dateReceivedBack = dateInput.value;
+
+  // If a count field was left blank, default it to the sent count rather than
+  // silently saving blank/zero.
+  const eReceived = getFieldOrDefault('modalRecvE', s.ECylinder || 0);
+  const dReceived = getFieldOrDefault('modalRecvD', s.DCylinder || 0);
+  const cReceived = getFieldOrDefault('modalRecvC', s.CCylinder || 0);
+  const m6Received = getFieldOrDefault('modalRecvM6', s.M6Cylinder || 0);
+
+  // Reflect the resolved defaults back into the fields so what's on screen
+  // matches exactly what's about to be saved.
+  document.getElementById('modalRecvE').value = eReceived;
+  document.getElementById('modalRecvD').value = dReceived;
+  document.getElementById('modalRecvC').value = cReceived;
+  document.getElementById('modalRecvM6').value = m6Received;
+
+  pendingReturnPayload = { id, returnTrackingNumber, dateReceivedBack, eReceived, dReceived, cReceived, m6Received };
+
+  document.getElementById('confirmContent').innerHTML = `
+    <div class="detail-title" style="margin-bottom:12px;">Confirm Cylinders Received</div>
+    <div class="detail-grid">
+      <div><span class="detail-label">E Cylinders</span><span class="detail-value">${eReceived}</span></div>
+      <div><span class="detail-label">D Cylinders</span><span class="detail-value">${dReceived}</span></div>
+      <div><span class="detail-label">C Cylinders</span><span class="detail-value">${cReceived}</span></div>
+      <div><span class="detail-label">M6 Cylinders</span><span class="detail-value">${m6Received}</span></div>
+      <div><span class="detail-label">Date Received</span><span class="detail-value">${formatDateDisplay(dateReceivedBack)}</span></div>
+      <div><span class="detail-label">Return Tracking #</span><span class="detail-value">${returnTrackingNumber || '—'}</span></div>
+    </div>
+    <div style="display:flex; gap:8px; margin-top:16px;">
+      <button type="button" class="btn-primary" onclick="submitConfirmedReturn()">Confirm &amp; Save</button>
+      <button type="button" class="btn-secondary" onclick="closeConfirm()">Cancel</button>
+    </div>`;
+  document.getElementById('confirmOverlay').classList.add('show');
+}
+
+function closeConfirm() {
+  document.getElementById('confirmOverlay').classList.remove('show');
+  pendingReturnPayload = null;
+}
+
+async function submitConfirmedReturn() {
+  if (!pendingReturnPayload) return;
+  if (!isConfigured()) {
+    showToast('Connect the app to a Google Sheet first (see banner above).', true);
+    closeConfirm();
+    return;
+  }
+
+  const payload = pendingReturnPayload;
+  closeConfirm();
+
+  try {
+    const res = await postAction({ action: 'updateReturn', data: payload });
+    if (res.success) {
+      showToast('Return info saved.');
+      editingReturn = false;
+      closeDetail();
+      await loadData();
+    } else {
+      showToast(res.error || 'Could not update shipment.', true);
+    }
+  } catch (err) {
+    showToast('Network error updating shipment.', true);
+    console.error(err);
+  }
+}
+
+// Sent as text/plain to avoid a CORS preflight (Apps Script doesn't handle OPTIONS).
+function postAction(payload) {
+  return fetch(API_URL, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  }).then(r => r.json());
+}
+
+document.getElementById('shipmentForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!isConfigured()) {
+    showToast('Connect the app to a Google Sheet first (see banner above).', true);
+    return;
+  }
+
+  const submitBtn = document.getElementById('submitBtn');
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<span class="spinner"></span> Logging…';
+
+  const data = {
+    office: document.getElementById('office').value,
+    destination: document.getElementById('destination').value,
+    dateSent: document.getElementById('dateSent').value,
+    racks: document.getElementById('racks').value,
+    eCylinder: document.getElementById('eCylinder').value,
+    dCylinder: document.getElementById('dCylinder').value,
+    cCylinder: document.getElementById('cCylinder').value,
+    m6Cylinder: document.getElementById('m6Cylinder').value,
+    shipper: document.getElementById('shipper').value,
+    trackingNumber: document.getElementById('trackingNumber').value
+  };
+
+  try {
+    const res = await postAction({ action: 'addShipment', data });
+    if (res.success) {
+      showToast('Shipment logged.');
+      document.getElementById('shipmentForm').reset();
+      document.getElementById('dateSent').value = new Date().toISOString().slice(0,10);
+      document.getElementById('office').value = '';
+      await loadData();
+    } else {
+      showToast(res.error || 'Could not log shipment.', true);
+    }
+  } catch (err) {
+    showToast('Network error logging shipment.', true);
+    console.error(err);
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Log Shipment';
+  }
+});
+
+document.getElementById('adminToggle').addEventListener('click', () => {
+  document.getElementById('adminPanel').classList.toggle('show');
+});
+
+document.getElementById('addOfficeBtn').addEventListener('click', async () => {
+  const val = document.getElementById('newOffice').value.trim();
+  if (!val) return;
+  if (!isConfigured()) { showToast('Connect the app to a Google Sheet first.', true); return; }
+  const res = await postAction({ action: 'addOffice', value: val });
+  if (res.success) {
+    showToast(`Added office "${val}".`);
+    document.getElementById('newOffice').value = '';
+    await loadData();
+  } else {
+    showToast(res.error || 'Could not add office.', true);
+  }
+});
+
+document.getElementById('addDestinationBtn').addEventListener('click', async () => {
+  const val = document.getElementById('newDestination').value.trim();
+  if (!val) return;
+  if (!isConfigured()) { showToast('Connect the app to a Google Sheet first.', true); return; }
+  const res = await postAction({ action: 'addDestination', value: val });
+  if (res.success) {
+    showToast(`Added destination "${val}".`);
+    document.getElementById('newDestination').value = '';
+    await loadData();
+  } else {
+    showToast(res.error || 'Could not add destination.', true);
+  }
+});
+
+document.getElementById('filterOffice').addEventListener('change', renderList);
+document.getElementById('filterStatus').addEventListener('change', renderList);
+document.getElementById('refreshBtn').addEventListener('click', loadData);
+
+// Init
+document.getElementById('dateSent').value = new Date().toISOString().slice(0,10);
+loadData();
+</script>
+
+</body>
+</html>
