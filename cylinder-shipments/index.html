@@ -1164,11 +1164,11 @@ async function fillVanKamBOL(s) {
 
   draw(formatDateDisplay(s.DateSent), 494.4, 751.2, 10);
 
-  draw(shipperAddr.Name || s.Office, 46.8, 652.8);
-  draw(shipperAddr.Street, 46.8, 628.8);
-  draw(shipperAddr.City, 46.8, 604.8);
-  draw(shipperAddr.Province, 186, 604.8);
-  draw(shipperAddr.PostalCode, 258, 604.8);
+  draw(shipperAddr.Name || s.Office, 28.8, 652.8);
+  draw(shipperAddr.Street, 28.8, 628.8);
+  draw(shipperAddr.City, 28.8, 604.8);
+  draw(shipperAddr.Province, 168, 604.8);
+  draw(shipperAddr.PostalCode, 240, 604.8);
 
   draw(consigneeAddr.Name || s.Destination, 313.2, 652.8);
   draw(consigneeAddr.Street, 313.2, 628.8);
@@ -1187,24 +1187,25 @@ async function fillVanKamBOL(s) {
   cylinderRows.forEach((row, i) => {
     if (i >= BOL_TABLE_ROWS.length) return; // template only has 5 sample rows
     const { textY } = BOL_TABLE_ROWS[i];
+    const weight = (CYLINDER_UNIT_WEIGHT_KG[row.type] || 0) * row.qty;
 
     draw(row.qty, 45, textY, 10);                                 // Pieces
     draw('1072', 66.48, textY, 10);                               // U.N. #
     draw(`${row.type} Oxygen Cylinder`, 129.6, textY, 9);         // Description
     draw('N/A', 379.2, textY, 9);                                 // DG Pck Grp
     draw('2.2', 405.47, textY, 10);                               // DG Class
+    draw(`${weight} kg`, BOL_WEIGHT_COL_X, textY, 9);             // Weight (this row's own weight)
   });
 
-  // Summary row: total racks, standard dimensions, and combined weight —
-  // instead of repeating dimensions on every cylinder-type row.
-  const summaryRowIndex = Math.min(cylinderRows.length, BOL_TABLE_ROWS.length - 1);
-  const summaryRow = BOL_TABLE_ROWS[summaryRowIndex];
+  // Summary row always sits on the last table row, regardless of how many
+  // cylinder-type rows are used above it.
+  const summaryRow = BOL_TABLE_ROWS[BOL_TABLE_ROWS.length - 1];
   const totalWeight = cylinderRows.reduce((sum, r) => sum + (CYLINDER_UNIT_WEIGHT_KG[r.type] || 0) * r.qty, 0);
   draw(`${s.Racks} racks`, 379.2, summaryRow.textY, 9);           // DG Pck Grp
   draw(STANDARD_RACK_DIMENSIONS.length, 439.40, summaryRow.lwhY, 9);
   draw(STANDARD_RACK_DIMENSIONS.width, 469.44, summaryRow.lwhY, 9);
   draw(STANDARD_RACK_DIMENSIONS.height, 498.82, summaryRow.lwhY, 9);
-  draw(`${totalWeight} kg`, BOL_WEIGHT_COL_X, summaryRow.textY, 9); // Weight (value)
+  draw(`${totalWeight} kg`, BOL_WEIGHT_COL_X, summaryRow.textY, 9); // Weight (total, all cylinders)
 
   if (WEIGHT_UNIT_IS_KG) draw('X', 566.21, 528, 11);              // KG checkbox (table-wide)
 
@@ -1213,10 +1214,10 @@ async function fillVanKamBOL(s) {
 
   draw(s.Shipper, 200, 139.2, 10);
 
-  draw(`${s.Office}${shipperAddr.Name ? ' - ' + shipperAddr.Name : ''}`, 96, 120, 9);
-  draw(s.Shipper, 96, 96, 9);
-  draw(total, 96, 72, 9);
-  draw(formatDateDisplay(s.DateSent), 96, 48, 9);
+  draw(`${s.Office}${shipperAddr.Name ? ' - ' + shipperAddr.Name : ''}`, 78, 120, 9);
+  draw(s.Shipper, 78, 96, 9);
+  draw(`${s.Racks} racks - ${total} cylinders`, 78, 72, 9);
+  draw(formatDateDisplay(s.DateSent), 78, 48, 9);
 
   if (s.TrackingNumber) {
     whiteRect(496.8, 17.76, 50.4, 13.44);
