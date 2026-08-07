@@ -360,6 +360,7 @@
   }
   .count-summary b { color: var(--text); }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 </head>
 <body>
 
@@ -385,6 +386,13 @@
         <div>
           <label for="office">Office</label>
           <select id="office" required></select>
+        </div>
+        <div>
+          <label for="carrier">Carrier</label>
+          <select id="carrier">
+            <option value="Messer">Messer</option>
+            <option value="VanKam">VanKam</option>
+          </select>
         </div>
         <div>
           <label for="destination">Sent To</label>
@@ -419,16 +427,17 @@
           <input type="text" id="shipper" required>
         </div>
         <div>
-          <label for="trackingNumber">Tracking #</label>
-          <input type="text" inputmode="numeric" pattern="[0-9]*" id="trackingNumber" required>
+          <label for="trackingNumber" id="trackingLabel">Tracking # <span style="text-transform:none; font-weight:400;">(optional)</span></label>
+          <input type="text" inputmode="numeric" pattern="[0-9]*" id="trackingNumber">
         </div>
         <div>
           <button type="submit" class="btn-primary" id="submitBtn">Log Shipment</button>
         </div>
       </div>
     </form>
-    <div style="margin-top:14px;">
+    <div style="margin-top:14px; display:flex; gap:14px; flex-wrap:wrap;">
       <button type="button" class="admin-toggle" id="adminToggle">+ Add a new office / destination</button>
+      <button type="button" class="admin-toggle" id="addressToggle">+ Manage addresses</button>
       <div class="admin-panel" id="adminPanel">
         <div class="row">
           <div>
@@ -443,6 +452,39 @@
             <input type="text" id="newDestination" placeholder="e.g. Messer - Kelowna">
           </div>
           <button type="button" class="btn-secondary btn-small" id="addDestinationBtn">Add Destination</button>
+        </div>
+      </div>
+      <div class="admin-panel" id="addressPanel">
+        <div class="row" style="width:100%;">
+          <div style="flex:1; min-width:220px;">
+            <label for="addressEntrySelect">Office / Destination</label>
+            <select id="addressEntrySelect"></select>
+          </div>
+        </div>
+        <div class="row" style="width:100%; flex-wrap:wrap;">
+          <div style="flex:1; min-width:180px;">
+            <label for="addrName">Name (as it should print)</label>
+            <input type="text" id="addrName" placeholder="e.g. Messer Canada">
+          </div>
+          <div style="flex:1; min-width:180px;">
+            <label for="addrStreet">Street</label>
+            <input type="text" id="addrStreet" placeholder="e.g. 10097 201st Street">
+          </div>
+        </div>
+        <div class="row" style="width:100%; flex-wrap:wrap;">
+          <div style="flex:1; min-width:120px;">
+            <label for="addrCity">City</label>
+            <input type="text" id="addrCity">
+          </div>
+          <div style="width:80px;">
+            <label for="addrProvince">Province</label>
+            <input type="text" id="addrProvince" placeholder="BC">
+          </div>
+          <div style="width:120px;">
+            <label for="addrPostal">Postal Code</label>
+            <input type="text" id="addrPostal">
+          </div>
+          <button type="button" class="btn-primary btn-small" id="saveAddressBtn">Save Address</button>
         </div>
       </div>
     </div>
@@ -520,7 +562,8 @@ function formatDateDisplay(dateStr) {
 let state = {
   shipments: [],
   offices: [],
-  destinations: []
+  destinations: [],
+  config: []
 };
 
 function isConfigured() {
@@ -584,7 +627,9 @@ async function loadData() {
     state.shipments = data.shipments || [];
     state.offices = (data.offices && data.offices.length) ? data.offices : DEFAULT_OFFICES;
     state.destinations = (data.destinations && data.destinations.length) ? data.destinations : DEFAULT_DESTINATIONS;
+    state.config = data.config || [];
     populateDropdowns(state.offices, state.destinations);
+    populateAddressSelector();
     renderList();
     connEl.textContent = 'Connected';
   } catch (err) {
@@ -592,6 +637,35 @@ async function loadData() {
     showToast('Could not load data. Check API_URL and your connection.', true);
     console.error(err);
   }
+}
+
+// Looks up the saved address for an Office or Destination by its config Value.
+function getAddress(type, value) {
+  const entry = state.config.find(c => c.Type === type && c.Value === value);
+  return entry || { Name: '', Street: '', City: '', Province: '', PostalCode: '' };
+}
+
+function populateAddressSelector() {
+  const sel = document.getElementById('addressEntrySelect');
+  if (!sel) return;
+  const current = sel.value;
+  const officeOpts = state.offices.map(o => `<option value="Office|${o}">Office — ${o}</option>`).join('');
+  const destOpts = state.destinations.map(d => `<option value="Destination|${d}">Destination — ${d}</option>`).join('');
+  sel.innerHTML = officeOpts + destOpts;
+  if (current) sel.value = current;
+  loadAddressIntoForm();
+}
+
+function loadAddressIntoForm() {
+  const sel = document.getElementById('addressEntrySelect');
+  if (!sel || !sel.value) return;
+  const [type, value] = sel.value.split('|');
+  const addr = getAddress(type, value);
+  document.getElementById('addrName').value = addr.Name || '';
+  document.getElementById('addrStreet').value = addr.Street || '';
+  document.getElementById('addrCity').value = addr.City || '';
+  document.getElementById('addrProvince').value = addr.Province || '';
+  document.getElementById('addrPostal').value = addr.PostalCode || '';
 }
 
 function populateDropdowns(offices, destinations) {
@@ -662,18 +736,45 @@ function renderList() {
     <div class="shipment-card" onclick="openDetail('${r.ID}')">
       <div class="shipment-card-top">
         ${statusBadge(r._status)}
-        <span class="shipment-card-tracking">#${r.TrackingNumber || '—'}</span>
+        <span class="shipment-card-tracking">${r.Carrier === 'VanKam' ? 'BOL' : '#'} ${r.TrackingNumber || '—'}</span>
       </div>
       <div class="shipment-card-route">${r.Office} → ${r.Destination}</div>
       <div class="shipment-card-meta">${formatDateDisplay(r.DateSent)} · ${r.Shipper}</div>
     </div>`).join('');
 }
 
-function buildDetailHTML(s, status) {
-  const sentInfoHTML = `
+let editingSent = false;
+
+function buildSentInfoHTML(s) {
+  const isVanKam = s.Carrier === 'VanKam';
+  const trackingDisplay = s.TrackingNumber || '—';
+  const proBillDisplay = s.ProBillNumber || '—';
+
+  const idBlock = editingSent ? `
+    <div class="detail-form" style="margin-top:10px;">
+      <div class="detail-form-grid" style="grid-template-columns:${isVanKam ? '1fr 1fr' : '1fr'};">
+        <div>
+          <label for="editTrackingNumber">${isVanKam ? "BOL #" : "Tracking #"}</label>
+          <input type="text" inputmode="numeric" pattern="[0-9]*" id="editTrackingNumber" value="${s.TrackingNumber || ''}">
+        </div>
+        ${isVanKam ? `
+        <div>
+          <label for="editProBillNumber">Pro Bill #</label>
+          <input type="text" inputmode="numeric" pattern="[0-9]*" id="editProBillNumber" value="${s.ProBillNumber || ''}">
+        </div>` : ''}
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button type="button" class="btn-primary btn-small" onclick="saveSentInfo()">Save</button>
+        <button type="button" class="btn-secondary btn-small" onclick="cancelEditSent()">Cancel</button>
+      </div>
+    </div>` : `
+    <button type="button" class="btn-secondary btn-small" style="margin-top:10px;" onclick="startEditSent()">Edit ${isVanKam ? "BOL # / Pro Bill #" : "Tracking #"}</button>`;
+
+  return `
     <div class="detail-section-title">Shipment Sent</div>
     <div class="detail-grid">
       <div><span class="detail-label">Office</span><span class="detail-value">${s.Office}</span></div>
+      <div><span class="detail-label">Carrier</span><span class="detail-value">${s.Carrier || 'Messer'}</span></div>
       <div><span class="detail-label">Sent To</span><span class="detail-value">${s.Destination}</span></div>
       <div><span class="detail-label">Date Sent</span><span class="detail-value">${formatDateDisplay(s.DateSent)}</span></div>
       <div><span class="detail-label">Racks</span><span class="detail-value">${s.Racks}</span></div>
@@ -682,8 +783,26 @@ function buildDetailHTML(s, status) {
       <div><span class="detail-label">C Cylinders</span><span class="detail-value">${s.CCylinder}</span></div>
       <div><span class="detail-label">M6 Cylinders</span><span class="detail-value">${s.M6Cylinder}</span></div>
       <div><span class="detail-label">Shipper</span><span class="detail-value">${s.Shipper}</span></div>
-      <div><span class="detail-label">Tracking #</span><span class="detail-value">${s.TrackingNumber}</span></div>
+      <div><span class="detail-label">${isVanKam ? "BOL #" : "Tracking #"}</span><span class="detail-value">${trackingDisplay}</span></div>
+      ${isVanKam ? `<div><span class="detail-label">Pro Bill #</span><span class="detail-value">${proBillDisplay}</span></div>` : ''}
+    </div>
+    ${idBlock}`;
+}
+
+function buildVanKamDocsHTML(s) {
+  return `
+    <div class="detail-section-title" style="background:var(--navy);">Shipping Documents</div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <button type="button" class="btn-secondary btn-small" onclick="generateVanKamDocuments()">Fill &amp; Share Documents</button>
+    </div>
+    <div style="font-size:0.72rem; color:var(--text-muted); margin-top:6px;">
+      Generates the BOL and TDG shipping document together as one PDF, pulling shipper/consignee addresses from "Manage addresses" on the form above — fill those in first if blank.
     </div>`;
+}
+
+function buildDetailHTML(s, status) {
+  const sentInfoHTML = buildSentInfoHTML(s);
+  const vanKamDocsHTML = s.Carrier === 'VanKam' ? buildVanKamDocsHTML(s) : '';
 
   const showForm = status !== 'received' || editingReturn;
   let returnInfoHTML;
@@ -749,6 +868,7 @@ function buildDetailHTML(s, status) {
       <button type="button" class="detail-close" onclick="closeDetail()" aria-label="Close">&times;</button>
     </div>
     ${sentInfoHTML}
+    ${vanKamDocsHTML}
     ${returnInfoHTML}
   `;
 }
@@ -774,6 +894,7 @@ function openDetail(id) {
   if (!s) return;
   activeShipmentId = id;
   editingReturn = false;
+  editingSent = false;
   renderDetailContent();
   document.getElementById('detailOverlay').classList.add('show');
 }
@@ -782,6 +903,52 @@ function closeDetail() {
   document.getElementById('detailOverlay').classList.remove('show');
   activeShipmentId = null;
   editingReturn = false;
+  editingSent = false;
+}
+
+function startEditSent() {
+  editingSent = true;
+  renderDetailContent();
+}
+
+function cancelEditSent() {
+  editingSent = false;
+  renderDetailContent();
+}
+
+async function saveSentInfo() {
+  const id = activeShipmentId;
+  const s = state.shipments.find(r => r.ID === id);
+  if (!s) return;
+  if (!isConfigured()) {
+    showToast('Connect the app to a Google Sheet first (see banner above).', true);
+    return;
+  }
+
+  const trackingNumber = document.getElementById('editTrackingNumber').value.trim();
+  const data = { id, trackingNumber };
+  const proBillEl = document.getElementById('editProBillNumber');
+  if (proBillEl) data.proBillNumber = proBillEl.value.trim();
+
+  try {
+    const res = await postAction({ action: 'updateSentInfo', data });
+    if (res.success) {
+      showToast('Shipment info updated.');
+      editingSent = false;
+      await loadData();
+      // Keep the sheet open on this shipment, showing the refreshed values.
+      const refreshed = state.shipments.find(r => r.ID === id);
+      if (refreshed) {
+        activeShipmentId = id;
+        renderDetailContent();
+      }
+    } else {
+      showToast(res.error || 'Could not update shipment.', true);
+    }
+  } catch (err) {
+    showToast('Network error updating shipment.', true);
+    console.error(err);
+  }
 }
 
 async function autoSaveReturnTracking(value) {
@@ -894,6 +1061,230 @@ async function submitConfirmedReturn() {
   }
 }
 
+// ============================================================
+// VanKam document generation (pdf-lib)
+// Coordinates below were measured directly against the templates and
+// verified with test renders. If a field ever needs nudging, adjust its
+// x/y here — x is points from the left edge, y is points from the
+// bottom edge (standard PDF coordinates), page is 612x792pt (letter).
+// ============================================================
+
+const VANKAM_TEMPLATE_URL = './templates/vankam_bol_template.pdf';
+const TDG_TEMPLATE_URL = './templates/tdg_shipping_document.pdf';
+
+// Assumptions baked in below — adjust here if they don't hold:
+const STANDARD_RACK_DIMENSIONS = { length: '48in', width: '40in', height: '48in' };
+const WEIGHT_UNIT_IS_KG = true;
+const FREIGHT_IS_PREPAID = true;
+const EMERGENCY_RESPONSE_PHONE = '613 - 996 - 6666';
+
+function totalCylinderCount(s) {
+  const n = v => parseInt(v, 10) || 0;
+  return n(s.ECylinder) + n(s.DCylinder) + n(s.CCylinder) + n(s.M6Cylinder);
+}
+
+async function loadTemplateBytes(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Could not load template at ${url} (${res.status})`);
+  return await res.arrayBuffer();
+}
+
+async function shareOrDownloadPdf(bytes, filename, shareTitle) {
+  const blob = new Blob([bytes], { type: 'application/pdf' });
+  const file = new File([blob], filename, { type: 'application/pdf' });
+
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: shareTitle });
+      return;
+    } catch (err) {
+      if (err && err.name === 'AbortError') return; // user cancelled the share sheet
+      console.error('Share failed, falling back to download.', err);
+    }
+  }
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+// Per-cylinder unit weights (kg) — used to compute each row's total weight
+// (unit weight x quantity) on the VanKam BOL.
+const CYLINDER_UNIT_WEIGHT_KG = { E: 4, D: 3, C: 2, M6: 1 };
+
+// Row baselines (pt) for the dangerous goods table on the VanKam BOL,
+// measured against the template — one row per cylinder type actually shipped.
+const BOL_TABLE_ROWS = [
+  { textY: 517, lwhY: 513 },
+  { textY: 498, lwhY: 494 },
+  { textY: 479, lwhY: 475 },
+  { textY: 460, lwhY: 456 }
+];
+const BOL_WEIGHT_COL_X = 525;
+
+async function fillVanKamBOL(s) {
+  const { PDFDocument, StandardFonts, rgb } = PDFLib;
+  const bytes = await loadTemplateBytes(VANKAM_TEMPLATE_URL);
+  const pdfDoc = await PDFDocument.load(bytes);
+  const page = pdfDoc.getPage(0);
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+
+  const shipperAddr = getAddress('Office', s.Office);
+  const consigneeAddr = getAddress('Destination', s.Destination);
+  const total = totalCylinderCount(s);
+
+  const draw = (text, x, y, size = 9) => {
+    if (text === undefined || text === null || text === '') return;
+    page.drawText(String(text), { x, y, size, font, color: rgb(0, 0, 0) });
+  };
+  const whiteRect = (x, y, w, h) => {
+    page.drawRectangle({ x, y, width: w, height: h, color: rgb(1, 1, 1) });
+  };
+
+  draw(formatDateDisplay(s.DateSent), 494.4, 751.2, 10);
+
+  draw(shipperAddr.Name || s.Office, 28.8, 652.8);
+  draw(shipperAddr.Street, 28.8, 628.8);
+  draw(shipperAddr.City, 28.8, 604.8);
+  draw(shipperAddr.Province, 168, 604.8);
+  draw(shipperAddr.PostalCode, 240, 604.8);
+
+  draw(consigneeAddr.Name || s.Destination, 295.2, 652.8);
+  draw(consigneeAddr.Street, 295.2, 628.8);
+  draw(consigneeAddr.City, 295.2, 604.8);
+  draw(consigneeAddr.Province, 434.4, 604.8);
+  draw(consigneeAddr.PostalCode, 506.4, 604.8);
+
+  // Dangerous goods table — one row per cylinder size actually shipped.
+  const cylinderRows = [
+    { type: 'E', qty: parseInt(s.ECylinder, 10) || 0 },
+    { type: 'D', qty: parseInt(s.DCylinder, 10) || 0 },
+    { type: 'C', qty: parseInt(s.CCylinder, 10) || 0 },
+    { type: 'M6', qty: parseInt(s.M6Cylinder, 10) || 0 }
+  ].filter(r => r.qty > 0);
+
+  cylinderRows.forEach((row, i) => {
+    if (i >= BOL_TABLE_ROWS.length) return; // template only has 5 sample rows; shouldn't happen with 4 sizes
+    const { textY, lwhY } = BOL_TABLE_ROWS[i];
+    const weight = (CYLINDER_UNIT_WEIGHT_KG[row.type] || 0) * row.qty;
+
+    draw(row.qty, 31.2, textY, 10);                              // Pieces
+    draw('1072', 66.48, textY, 10);                               // U.N. #
+    draw(`${row.type} Oxygen Cylinder`, 129.6, textY, 9);         // Description
+    draw('N/A', 379.2, textY, 9);                                 // DG Pck Grp
+    draw('2.2', 405.47, textY, 10);                               // DG Class
+    draw(STANDARD_RACK_DIMENSIONS.length, 439.40, lwhY, 9);
+    draw(STANDARD_RACK_DIMENSIONS.width, 469.44, lwhY, 9);
+    draw(STANDARD_RACK_DIMENSIONS.height, 498.82, lwhY, 9);
+    draw(`${weight} kg`, BOL_WEIGHT_COL_X, textY, 9);             // Weight (value)
+  });
+
+  if (WEIGHT_UNIT_IS_KG) draw('X', 566.21, 528, 11);              // KG checkbox (table-wide)
+
+  draw(EMERGENCY_RESPONSE_PHONE, 39.11, 291, 9);
+  if (FREIGHT_IS_PREPAID) draw('X', 263.04, 339.84, 11);
+
+  draw(s.Shipper, 220.8, 139.2, 10);
+
+  draw(`${s.Office}${shipperAddr.Name ? ' - ' + shipperAddr.Name : ''}`, 96, 120, 9);
+  draw(s.Shipper, 96, 96, 9);
+  draw(total, 96, 72, 9);
+  draw(formatDateDisplay(s.DateSent), 96, 48, 9);
+
+  if (s.TrackingNumber) {
+    whiteRect(496.8, 17.76, 50.4, 13.44);
+    draw(s.TrackingNumber, 501.6, 21.6, 10);
+  }
+
+  return pdfDoc;
+}
+
+async function fillTDGDocument(s) {
+  const { PDFDocument, StandardFonts, rgb } = PDFLib;
+  const bytes = await loadTemplateBytes(TDG_TEMPLATE_URL);
+  const pdfDoc = await PDFDocument.load(bytes);
+  const page = pdfDoc.getPage(0);
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+
+  const shipperAddr = getAddress('Office', s.Office);
+  const consigneeAddr = getAddress('Destination', s.Destination);
+  const total = totalCylinderCount(s);
+
+  const draw = (text, x, yFromBottomOfLine, size = 9) => {
+    if (text === undefined || text === null || text === '') return;
+    page.drawText(String(text), { x, y: yFromBottomOfLine, size, font, color: rgb(0, 0, 0) });
+  };
+  // Covers a "Click or tap here..." placeholder (or static sample text) before drawing over it.
+  const whiteout = (x0, x1, top, bottom, pad = 2) => {
+    const y = 792 - bottom - pad;
+    const h = (bottom - top) + pad * 2;
+    page.drawRectangle({ x: x0 - 2, y, width: (x1 - x0) + 6, height: h, color: rgb(1, 1, 1) });
+  };
+
+  const shipperAddrLine = [shipperAddr.Street, shipperAddr.City, shipperAddr.Province, shipperAddr.PostalCode]
+    .filter(Boolean).join(', ');
+  const consigneeAddrLine = [consigneeAddr.Street, consigneeAddr.City, consigneeAddr.Province, consigneeAddr.PostalCode]
+    .filter(Boolean).join(', ');
+
+  whiteout(121.0, 260.2, 130.7, 141.7);
+  draw(shipperAddrLine, 121, 792 - 141.7 + 2, 9);
+
+  whiteout(109.0, 400, 171.2, 183.2);
+  draw(consigneeAddr.Name || s.Destination, 109, 792 - 183.2 + 2, 9);
+  whiteout(121.0, 400, 185.0, 197.0);
+  draw(consigneeAddrLine, 121, 792 - 197.0 + 2, 9);
+
+  whiteout(112.3, 260.2, 214.3, 225.3);
+  draw(formatDateDisplay(s.DateSent), 112.3, 792 - 225.3 + 2, 9);
+
+  whiteout(156.4, 300, 227.1, 239.1);
+  draw(shipperAddr.City || s.Office, 156.4, 792 - 239.1 + 2, 9);
+
+  whiteout(222.7, 400, 256.2, 267.2);
+  draw(s.TrackingNumber, 222.7, 792 - 267.2 + 2, 9);
+
+  whiteout(127.1, 320, 270.5, 281.5);
+  draw(s.ProBillNumber, 127.1, 792 - 281.5 + 2, 9);
+
+  whiteout(407, 460, 482.6, 536.0);
+  draw(total, 413, 792 - 510 + 2, 9);   // Total Quantity
+  draw(total, 470, 792 - 510 + 2, 9);   // Number of Small Means of Containment
+
+  whiteout(160.7, 320, 638.5, 649.5);
+  draw(s.Shipper, 160.7, 792 - 649.5 + 2, 9);
+
+  return pdfDoc;
+}
+
+// Fills both templates and merges them into a single PDF (BOL page, then
+// both TDG pages) so there's one document to share or print.
+async function generateVanKamDocuments() {
+  const s = state.shipments.find(r => r.ID === activeShipmentId);
+  if (!s) return;
+  try {
+    showToast('Building documents…');
+    const { PDFDocument } = PDFLib;
+    const [bolDoc, tdgDoc] = await Promise.all([fillVanKamBOL(s), fillTDGDocument(s)]);
+
+    const merged = await PDFDocument.create();
+    const [bolPage] = await merged.copyPages(bolDoc, [0]);
+    merged.addPage(bolPage);
+    const tdgPages = await merged.copyPages(tdgDoc, [0, 1]);
+    tdgPages.forEach(p => merged.addPage(p));
+
+    const bytes = await merged.save();
+    await shareOrDownloadPdf(bytes, `VanKam-Shipping-Docs-${s.Office}-${s.DateSent}.pdf`, 'VanKam Shipping Documents');
+  } catch (err) {
+    showToast('Could not generate the documents. ' + err.message, true);
+    console.error(err);
+  }
+}
+
 // Sent as text/plain to avoid a CORS preflight (Apps Script doesn't handle OPTIONS).
 function postAction(payload) {
   return fetch(API_URL, {
@@ -923,7 +1314,8 @@ document.getElementById('shipmentForm').addEventListener('submit', async (e) => 
     cCylinder: document.getElementById('cCylinder').value,
     m6Cylinder: document.getElementById('m6Cylinder').value,
     shipper: document.getElementById('shipper').value,
-    trackingNumber: document.getElementById('trackingNumber').value
+    trackingNumber: document.getElementById('trackingNumber').value,
+    carrier: document.getElementById('carrier').value
   };
 
   try {
@@ -948,6 +1340,37 @@ document.getElementById('shipmentForm').addEventListener('submit', async (e) => 
 
 document.getElementById('adminToggle').addEventListener('click', () => {
   document.getElementById('adminPanel').classList.toggle('show');
+});
+
+document.getElementById('addressToggle').addEventListener('click', () => {
+  document.getElementById('addressPanel').classList.toggle('show');
+  populateAddressSelector();
+});
+
+document.getElementById('addressEntrySelect').addEventListener('change', loadAddressIntoForm);
+
+document.getElementById('saveAddressBtn').addEventListener('click', async () => {
+  const sel = document.getElementById('addressEntrySelect');
+  if (!sel.value) return;
+  const [type, value] = sel.value.split('|');
+  if (!isConfigured()) { showToast('Connect the app to a Google Sheet first.', true); return; }
+
+  const data = {
+    type, value,
+    name: document.getElementById('addrName').value.trim(),
+    street: document.getElementById('addrStreet').value.trim(),
+    city: document.getElementById('addrCity').value.trim(),
+    province: document.getElementById('addrProvince').value.trim(),
+    postalCode: document.getElementById('addrPostal').value.trim()
+  };
+
+  const res = await postAction({ action: 'updateAddress', data });
+  if (res.success) {
+    showToast(`Address saved for ${value}.`);
+    await loadData();
+  } else {
+    showToast(res.error || 'Could not save address.', true);
+  }
 });
 
 document.getElementById('addOfficeBtn').addEventListener('click', async () => {
@@ -977,6 +1400,15 @@ document.getElementById('addDestinationBtn').addEventListener('click', async () 
     showToast(res.error || 'Could not add destination.', true);
   }
 });
+
+function updateTrackingLabel() {
+  const carrier = document.getElementById('carrier').value;
+  const label = document.getElementById('trackingLabel');
+  label.innerHTML = carrier === 'VanKam'
+    ? 'BOL # <span style="text-transform:none; font-weight:400;">(optional)</span>'
+    : 'Tracking # <span style="text-transform:none; font-weight:400;">(optional)</span>';
+}
+document.getElementById('carrier').addEventListener('change', updateTrackingLabel);
 
 document.getElementById('filterOffice').addEventListener('change', renderList);
 document.getElementById('filterStatus').addEventListener('change', renderList);
