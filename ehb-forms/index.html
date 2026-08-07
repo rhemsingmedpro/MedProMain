@@ -224,8 +224,12 @@
   .overlay-togglebar{margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
   .overlay-stage{
     position:relative;margin:0 auto 14px;width:max-content;max-width:100%;overflow:hidden;
-    touch-action:none; /* iOS: without this, native pinch-zoom can desync the
-                           overlay fields from the canvas underneath */
+    /* touch-action stays default (auto) here so a finger-drag over the
+       checkboxes or blank PDF background still scrolls the page normally —
+       only the signature canvases themselves (below) opt out of that, so
+       drawing on them isn't hijacked into a page scroll. Native pinch-zoom
+       is a uniform visual transform of the whole page, so it doesn't need
+       touch-action:none here to stay in sync with the canvas underneath. */
     box-shadow:0 3px 22px rgba(21,37,72,.18);background:#fff;
   }
   .overlay-stage canvas.overlay-pdfcanvas{display:block;}
@@ -1118,7 +1122,12 @@ function initSigPad(canvasId){
      differently-shaped PDF-overlay signature stamp) just draws it at its
      original position, which overflows or looks "zoomed in" rather than
      resized to fit. sigPadCssSize tracks each canvas's last logical size so
-     the saved points can be scaled proportionally before replaying. */
+     the saved stroke data can be rescaled before replaying — uniformly
+     (same factor on x and y, "contain"-style, centered in the new box)
+     rather than stretched independently per axis, which distorted the
+     signature's shape and left line thickness (minWidth/maxWidth/dotSize
+     are also in logical px, and get the same factor) looking too thick
+     once the drawing itself had shrunk. */
   function resize(){
     const ratio = Math.max(window.devicePixelRatio || 1, 1);
     const w = canvas.offsetWidth || 300;
@@ -1132,8 +1141,12 @@ function initSigPad(canvasId){
     try { saved = pad && !pad.isEmpty() ? pad.toData() : null; } catch(e){ saved = null; }
 
     const prevSize = sigPadCssSize[canvasId];
-    const scaleX = (prevSize && prevSize.w > 0) ? w / prevSize.w : 1;
-    const scaleY = (prevSize && prevSize.h > 0) ? h / prevSize.h : 1;
+    let scale = 1, offsetX = 0, offsetY = 0;
+    if (prevSize && prevSize.w > 0 && prevSize.h > 0){
+      scale = Math.min(w / prevSize.w, h / prevSize.h);
+      offsetX = (w - prevSize.w * scale) / 2;
+      offsetY = (h - prevSize.h * scale) / 2;
+    }
 
     canvas.width = targetW;
     canvas.height = targetH;
@@ -1144,10 +1157,13 @@ function initSigPad(canvasId){
     // scaled to fit the (possibly very different) new box. Also restores
     // _isEmpty to a truthful value.
     if (saved && saved.length){
-      if (scaleX !== 1 || scaleY !== 1){
+      if (scale !== 1){
         saved = saved.map(group => ({
           ...group,
-          points: (group.points || []).map(pt => ({ ...pt, x: pt.x * scaleX, y: pt.y * scaleY })),
+          minWidth: group.minWidth != null ? group.minWidth * scale : group.minWidth,
+          maxWidth: group.maxWidth != null ? group.maxWidth * scale : group.maxWidth,
+          dotSize: group.dotSize != null ? group.dotSize * scale : group.dotSize,
+          points: (group.points || []).map(pt => ({ ...pt, x: pt.x * scale + offsetX, y: pt.y * scale + offsetY })),
         }));
       }
       try { pad.fromData(saved); } catch(e){ /* leave blank rather than throw */ }
