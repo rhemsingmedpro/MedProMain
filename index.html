@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MedPro Respiratory Care | Staff Portal</title>
+
+<!-- PWA / iOS Add-to-Home-Screen support -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MedPro Portal">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
   :root {
     --navy: #003D79;
@@ -188,6 +194,86 @@
     color: var(--text-muted);
     font-size: 0.8rem;
   }
+
+  #installBtn {
+    display: none;
+    margin: 14px auto 0;
+    align-items: center;
+    gap: 8px;
+    background: var(--navy);
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    padding: 10px 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 61, 121, 0.25);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  #installBtn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(0, 61, 121, 0.3);
+  }
+
+  #installBtn svg {
+    width: 16px;
+    height: 16px;
+    stroke: #fff;
+    flex-shrink: 0;
+  }
+
+  #installOverlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(16, 30, 54, 0.55);
+    z-index: 100;
+    align-items: flex-end;
+    justify-content: center;
+  }
+
+  #installOverlay.show {
+    display: flex;
+  }
+
+  #installOverlay .sheet {
+    background: #fff;
+    width: 100%;
+    max-width: 480px;
+    border-radius: 18px 18px 0 0;
+    padding: 24px 22px 32px;
+    box-shadow: 0 -8px 30px rgba(16, 30, 54, 0.25);
+  }
+
+  #installOverlay h2 {
+    margin: 0 0 14px;
+    font-size: 1.05rem;
+    color: var(--navy);
+  }
+
+  #installOverlay ol {
+    margin: 0 0 18px;
+    padding-left: 20px;
+    color: var(--text);
+    font-size: 0.92rem;
+    line-height: 1.7;
+  }
+
+  #installOverlay button {
+    width: 100%;
+    background: var(--green);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 12px;
+    font-size: 0.92rem;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+  }
 </style>
 </head>
 <body>
@@ -198,7 +284,24 @@
   </div>
   <h1>Staff Portal</h1>
   <p>Quick access to field and office tools</p>
+
+  <button id="installBtn" type="button" onclick="showInstallSheet()">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"></path><polyline points="7 10 12 15 17 10"></polyline><path d="M5 21h14"></path></svg>
+    Add to Home Screen
+  </button>
 </header>
+
+<div id="installOverlay" onclick="if(event.target===this) hideInstallSheet()">
+  <div class="sheet">
+    <h2>Install this portal on your iPhone</h2>
+    <ol>
+      <li>Tap the <strong>Share</strong> icon (square with an arrow, in the Safari toolbar)</li>
+      <li>Scroll down and tap <strong>Add to Home Screen</strong></li>
+      <li>Tap <strong>Add</strong> in the top right</li>
+    </ol>
+    <button type="button" onclick="hideInstallSheet()">Got it</button>
+  </div>
+</div>
 
 <main>
   <div class="grid">
@@ -287,6 +390,36 @@
 <footer>
   MedPro Respiratory Care &mdash; Internal Staff Tools
 </footer>
+
+<script>
+  function isIOS() {
+    return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // iPadOS
+  }
+
+  function isStandalone() {
+    return window.navigator.standalone === true ||
+      window.matchMedia('(display-mode: standalone)').matches;
+  }
+
+  function showInstallSheet() {
+    document.getElementById('installOverlay').classList.add('show');
+  }
+
+  function hideInstallSheet() {
+    document.getElementById('installOverlay').classList.remove('show');
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    var btn = document.getElementById('installBtn');
+    if (isStandalone()) {
+      return;
+    }
+    if (isIOS()) {
+      btn.style.display = 'inline-flex';
+    }
+  });
+</script>
 
 </body>
 </html>
