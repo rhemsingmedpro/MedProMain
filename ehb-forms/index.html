@@ -113,7 +113,7 @@
     font-weight:600;
     margin-bottom:4px;
   }
-  input[type=text],input[type=tel],select{
+  input[type=text],input[type=tel],select,textarea{
     width:100%;
     padding:7px 8px;
     border:1px solid var(--line2);
@@ -123,7 +123,12 @@
     font-size:13px;
     color:var(--ink);
   }
-  input:focus,select:focus{outline:none;border-color:var(--mp-blue);box-shadow:0 0 0 3px rgba(0,59,116,.12);}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--mp-blue);box-shadow:0 0 0 3px rgba(0,59,116,.12);}
+  .pastebox{
+    border:1px dashed var(--line2);border-radius:6px;padding:12px;margin-bottom:16px;background:var(--panel2);
+  }
+  .pastebox textarea{font-family:var(--mono);font-size:11.5px;resize:vertical;background:#fff;}
+  .pastebox .paste-status{font-size:11px;line-height:1.6;margin-top:6px;min-height:1.4em;}
   .radio-row{display:flex;gap:12px;flex-wrap:wrap;align-items:center;padding-top:4px;}
   .radio-row label{
     display:flex;align-items:center;gap:5px;
@@ -226,6 +231,7 @@
   .btn.danger{background:#fff;color:var(--danger);border-color:#e3b8b0;}
   .btn.danger:hover{background:#fbeae7;}
   .btn:disabled{opacity:.4;cursor:not-allowed;}
+  .btn.mini{padding:6px 12px;font-size:11px;}
 
   .toprow{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:18px 0;}
   .status-msg{
@@ -261,6 +267,12 @@
       <span class="tag">shared across forms below</span>
     </div>
     <div class="panel-body">
+      <div class="pastebox">
+        <label for="p-pasteblock">Paste dispatch info (optional) — fills the fields below</label>
+        <textarea id="p-pasteblock" rows="3" placeholder="Paste a block of patient info here, e.g. from the dispatch log…"></textarea>
+        <button type="button" class="btn mini" id="btn-parse-paste" style="margin-top:8px;">Fill fields from pasted text</button>
+        <div class="paste-status" id="paste-status"></div>
+      </div>
       <div class="grid">
         <div><label for="p-firstName">First name</label><input id="p-firstName" type="text"></div>
         <div><label for="p-lastName">Last name</label><input id="p-lastName" type="text"></div>
@@ -407,6 +419,172 @@ function validateDobField(){
   els.forEach(e => { e.style.borderColor = ok ? '' : 'var(--danger, #c0392b)'; });
   return ok;
 }
+
+/* ---------------------------------------------------------------------
+   Paste-to-fill — dispatch-log-style patient blocks look like:
+     9139 681 351
+     Clancey, Harold *3
+     128 Rockcliff Place
+     Tumbler Ridge
+     Phone: +1 (250) 242-7888
+     DOB 1953/09/10
+     Notes: ...
+   Name is found by its "Last, First" comma pattern rather than by line
+   position, since a leading ID line isn't guaranteed. Street address and
+   city are then read positionally off the two lines right after the name
+   line, skipping past this if either looks like a labeled field instead
+   (Phone/DOB/Notes/Rx/Dx/doctor lines) — this is best-effort parsing of a
+   free-text block, not a strict format, so it only fills what it's
+   confident about and leaves the rest for manual entry.
+--------------------------------------------------------------------- */
+/* The dispatch source has no enforced date format — DOB shows up as either
+   YYYY/MM/DD or DD/MM/YYYY (never seen MM/DD/YYYY, but it's tried as a last
+   resort). The 4-digit group is always the year, wherever it sits; the
+   remaining two are resolved by position first (day/month order is DMY
+   when year comes last, YMD when year comes first — that's what both real
+   samples do), then double-checked against isValidDob() so an
+   out-of-range guess (month 15, etc.) gets a second try with day/month
+   swapped instead of silently producing a wrong date. When both readings
+   would be in-range (e.g. 05/08) it's genuinely ambiguous — it's flagged
+   so a human double-checks rather than trusting a silent guess. */
+function parseDobFlexible(text){
+  const m = /DOB\s*:?\s*(\d{1,4})[\/\-.](\d{1,2})[\/\-.](\d{1,4})/i.exec(text);
+  if (!m) return null;
+  const g = [m[1], m[2], m[3]];
+  const yearIdx = g.findIndex(s => s.length === 4);
+  if (yearIdx !== 0 && yearIdx !== 2) return null; // no unambiguous year, or year sandwiched in the middle — not a pattern seen from this source
+
+  const year = g[yearIdx];
+  const middle = parseInt(g[1], 10);
+  const end = parseInt(g[yearIdx === 0 ? 2 : 0], 10);
+
+  const tryDate = (month, day) => {
+    const dob = `${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}-${year}`;
+    return isValidDob(dob) ? dob : null;
+  };
+
+  // Position-based default: year-first reads as YYYY/MM/DD, year-last as
+  // DD/MM/YYYY — the month sits in the middle group either way.
+  let dob = tryDate(middle, end);
+  let ambiguous = !!dob && middle <= 12 && end <= 12 && middle !== end;
+  if (!dob){
+    dob = tryDate(end, middle); // fall back to the American MM/DD/YYYY reading
+    ambiguous = false; // this wasn't a coin-flip — it's the only valid reading
+  }
+  if (!dob) return null;
+
+  const [mm, dd, yyyy] = dob.split('-');
+  return { year: yyyy, month: mm, day: dd, ambiguous };
+}
+
+function parsePatientBlock(text){
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const result = {};
+  const isLabeledLine = l => /^(phone|dob|notes?|rx\b|dx\b|dr\.?\s|gp\b)/i.test(l);
+  const looksLikeIdOrPhone = l => /^[\d\s()+.-]+$/.test(l);
+
+  let nameLineIdx = -1;
+  for (let i = 0; i < lines.length; i++){
+    const m = /^([A-Za-z' -]+),\s*([A-Za-z'-]+)/.exec(lines[i]);
+    if (m){
+      result.lastName = m[1].trim();
+      result.firstName = m[2].trim();
+      nameLineIdx = i;
+      break;
+    }
+  }
+
+  for (const line of lines){
+    const m = /phone\s*:?\s*(.+)/i.exec(line);
+    if (m){
+      const digits = m[1].replace(/\D/g, '');
+      result.phone = (digits.length === 11 && digits[0] === '1') ? digits.slice(1) : digits.slice(-10);
+      break;
+    }
+  }
+  if (!result.phone){
+    const m = /(?:\+?1[\s.-]?)?\(?(\d{3})\)?[\s.-]?(\d{3})[\s.-]?(\d{4})\b/.exec(text);
+    if (m) result.phone = m[1] + m[2] + m[3];
+  }
+
+  const dob = parseDobFlexible(text);
+  if (dob){
+    result.dobYear = dob.year;
+    result.dobMonth = dob.month;
+    result.dobDay = dob.day;
+    result.dobAmbiguous = dob.ambiguous;
+  }
+
+  if (nameLineIdx >= 0){
+    const streetCandidate = lines[nameLineIdx + 1];
+    if (streetCandidate && !isLabeledLine(streetCandidate) && !looksLikeIdOrPhone(streetCandidate)){
+      result.streetAddress = streetCandidate;
+      const cityCandidate = lines[nameLineIdx + 2];
+      if (cityCandidate && !isLabeledLine(cityCandidate) && !looksLikeIdOrPhone(cityCandidate)){
+        result.city = cityCandidate;
+      }
+    }
+  }
+
+  return result;
+}
+
+function setFieldAndFireInput(id, value){
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.value = value;
+  el.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+function fillFromPasteBlock(){
+  const statusEl = document.getElementById('paste-status');
+  const text = document.getElementById('p-pasteblock').value;
+  if (!text.trim()){
+    statusEl.textContent = 'Paste some text first.';
+    statusEl.style.color = 'var(--danger)';
+    return;
+  }
+
+  const r = parsePatientBlock(text);
+  const filled = [], missing = [];
+
+  const apply = (id, value, label) => {
+    if (value){ setFieldAndFireInput(id, value); filled.push(label); }
+    else missing.push(label);
+  };
+  apply('p-firstName', r.firstName, 'first name');
+  apply('p-lastName', r.lastName, 'last name');
+  apply('p-phone', r.phone, 'phone');
+  apply('p-streetAddress', r.streetAddress, 'street address');
+  apply('p-city', r.city, 'city');
+
+  if (r.dobDay && r.dobMonth && r.dobYear){
+    setFieldAndFireInput('p-dobDay', r.dobDay);
+    setFieldAndFireInput('p-dobMonth', r.dobMonth);
+    setFieldAndFireInput('p-dobYear', r.dobYear);
+    filled.push(r.dobAmbiguous ? 'DOB (day/month order unclear — verify)' : 'DOB');
+  } else {
+    missing.push('DOB');
+  }
+
+  if (filled.length){
+    statusEl.style.color = 'var(--mp-green-dark)';
+    statusEl.textContent = 'Filled ' + filled.join(', ') + '.' +
+      (missing.length ? ' Not found — check manually: ' + missing.join(', ') + '.' : '');
+    // The free-text block often carries clinical notes/diagnosis beyond
+    // what we pulled out — clear it once it's served its purpose rather
+    // than leaving that sitting on screen for the rest of the session.
+    document.getElementById('p-pasteblock').value = '';
+  } else {
+    statusEl.style.color = 'var(--danger)';
+    statusEl.textContent = "Couldn't recognize any fields in that text — fill in manually.";
+  }
+}
+
+document.getElementById('btn-parse-paste').addEventListener('click', fillFromPasteBlock);
+document.getElementById('p-pasteblock').addEventListener('paste', () => {
+  setTimeout(fillFromPasteBlock, 0);
+});
 
 document.addEventListener('input', function(e){
   const t = e.target;
@@ -1955,6 +2133,8 @@ document.getElementById('btn-reset').addEventListener('click', ()=>{
   if (!confirm('Clear all profile info, form entries, and signatures for this patient?')) return;
   document.querySelectorAll('main input[type=text], main input[type=tel]').forEach(i=> i.value='');
   document.getElementById('p-province').value = 'BC';
+  document.getElementById('p-pasteblock').value = '';
+  document.getElementById('paste-status').textContent = '';
   document.querySelectorAll('main input[type=radio], main input[type=checkbox]').forEach(i=> i.checked=false);
   Object.values(sigPads).forEach(p=>p.clear());
   document.querySelectorAll('.accordion-panel').forEach(p=>{
