@@ -752,23 +752,29 @@ function buildSentInfoHTML(s) {
 
   const idBlock = editingSent ? `
     <div class="detail-form" style="margin-top:10px;">
-      <div class="detail-form-grid" style="grid-template-columns:${isVanKam ? '1fr 1fr' : '1fr'};">
+      <div>
+        <label for="editCarrier">Carrier</label>
+        <select id="editCarrier">
+          <option value="Messer" ${!isVanKam ? 'selected' : ''}>Messer</option>
+          <option value="VanKam" ${isVanKam ? 'selected' : ''}>VanKam</option>
+        </select>
+      </div>
+      <div class="detail-form-grid" style="grid-template-columns:1fr 1fr;">
         <div>
-          <label for="editTrackingNumber">${isVanKam ? "BOL #" : "Tracking #"}</label>
+          <label for="editTrackingNumber">Tracking # / BOL #</label>
           <input type="text" inputmode="numeric" pattern="[0-9]*" id="editTrackingNumber" value="${s.TrackingNumber || ''}">
         </div>
-        ${isVanKam ? `
         <div>
-          <label for="editProBillNumber">Pro Bill #</label>
+          <label for="editProBillNumber">Pro Bill # <span style="text-transform:none; font-weight:400;">(VanKam only)</span></label>
           <input type="text" inputmode="numeric" pattern="[0-9]*" id="editProBillNumber" value="${s.ProBillNumber || ''}">
-        </div>` : ''}
+        </div>
       </div>
       <div style="display:flex; gap:8px;">
         <button type="button" class="btn-primary btn-small" onclick="saveSentInfo()">Save</button>
         <button type="button" class="btn-secondary btn-small" onclick="cancelEditSent()">Cancel</button>
       </div>
     </div>` : `
-    <button type="button" class="btn-secondary btn-small" style="margin-top:10px;" onclick="startEditSent()">Edit ${isVanKam ? "BOL # / Pro Bill #" : "Tracking #"}</button>`;
+    <button type="button" class="btn-secondary btn-small" style="margin-top:10px;" onclick="startEditSent()">Edit Carrier${isVanKam ? " / BOL # / Pro Bill #" : " / Tracking #"}</button>`;
 
   return `
     <div class="detail-section-title">Shipment Sent</div>
@@ -926,7 +932,8 @@ async function saveSentInfo() {
   }
 
   const trackingNumber = document.getElementById('editTrackingNumber').value.trim();
-  const data = { id, trackingNumber };
+  const carrier = document.getElementById('editCarrier').value;
+  const data = { id, trackingNumber, carrier };
   const proBillEl = document.getElementById('editProBillNumber');
   if (proBillEl) data.proBillNumber = proBillEl.value.trim();
 
