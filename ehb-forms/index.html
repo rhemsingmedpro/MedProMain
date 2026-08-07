@@ -1964,7 +1964,7 @@ function resolveSignaturePadId(role, form){
    blob: one — see ios-overlay-test.html's notes on why that combination
    silently breaks embedded-font rendering on some of these PDFs.
 ======================================================================= */
-const OVERLAY_PILOT_FORM_IDS = ['smokingandheatsource'];
+const OVERLAY_PILOT_FORM_IDS = ['smokingandheatsource', 'medproconsentform', 'creditcardauthorizat', 'scratchscan'];
 
 if (typeof pdfjsLib !== 'undefined'){
   pdfjsLib.GlobalWorkerOptions.workerSrc =
@@ -2019,8 +2019,36 @@ function overlayPreviewValue(form, df){
     case 'computed':  return computeProfileValue(df.recipe, profile);
     case 'profile':   return profile[df.profileKey] || '';
     case 'static':    return df.text || '';
+    // Some forms draw the same own/checkbox value at more than one spot on
+    // the page (e.g. an initial repeated in several places). Only the first
+    // occurrence gets the real, editable input moved onto it — the rest
+    // mirror its live value/checked state read-only, rather than sitting
+    // there as a dead empty box.
+    case 'own': {
+      const el = document.getElementById(`f-${form.id}-${df.key}`);
+      return el ? el.value : '';
+    }
+    case 'checkbox': {
+      const el = document.getElementById(`f-${form.id}-${df.key}`);
+      return (el && el.checked) ? (df.mark === 'check' ? '✓' : 'X') : '';
+    }
     default:          return '';
   }
+}
+
+/* Readable label for a signature stamp's role — falls back to the pad's own
+   declared label for "custom:<key>" roles (a form-specific signer who isn't
+   the shared member or witness), rather than showing the raw role string. */
+function signatureStampLabel(sg, form){
+  if (sg.role === 'member-part1') return 'Member';
+  if (sg.role === 'member-part2') return 'Member (Part 2)';
+  if (sg.role === 'witness') return form.witnessLabel || 'Witness';
+  if (String(sg.role).indexOf('custom:') === 0){
+    const key = String(sg.role).slice(7);
+    const pad = (form.extraSignaturePads || []).find(p => p.key === key);
+    return (pad && pad.label) || key;
+  }
+  return sg.role;
 }
 
 function addOverlayToggle(form, panel){
@@ -2103,9 +2131,14 @@ async function openOverlay(form, panel, stage){
   const hiddenLists = [...panel.querySelectorAll('fieldset')];
   hiddenLists.forEach(fs => { fs.dataset.overlayHidden = fs.hidden ? '1' : '0'; fs.hidden = true; });
 
+  const seenOwnKeys = new Set(); // only the first drawFields occurrence of an own/checkbox key gets the real input moved onto it
+  const mirroredInputs = []; // primary own/checkbox elements a preview mirrors — wired to refreshPreviews too
+
   (form.drawFields || []).forEach(df => {
     const rect = overlayRectForDrawField(df, pageHeightPts, scale);
-    if (df.source === 'own' || df.source === 'checkbox'){
+    const isPrimaryOwnField = (df.source === 'own' || df.source === 'checkbox') && !seenOwnKeys.has(df.key);
+    if (isPrimaryOwnField){
+      seenOwnKeys.add(df.key);
       const el = document.getElementById(`f-${form.id}-${df.key}`);
       if (!el) return;
       const wrap = document.createElement('div');
@@ -2115,6 +2148,7 @@ async function openOverlay(form, panel, stage){
       moved.push({ el, originalParent: el.parentNode, originalNextSibling: el.nextSibling });
       wrap.appendChild(el);
       stage.appendChild(wrap);
+      mirroredInputs.push(el);
     } else {
       const wrap = document.createElement('div');
       wrap.className = 'overlay-field preview';
@@ -2126,6 +2160,8 @@ async function openOverlay(form, panel, stage){
       wrap.dataset.previewFormat = df.format || '';
       wrap.dataset.previewProfileKey = df.profileKey || '';
       wrap.dataset.previewText = df.text || '';
+      wrap.dataset.previewKey = df.key || '';
+      wrap.dataset.previewMark = df.mark || '';
       stage.appendChild(wrap);
       created.push(wrap);
     }
@@ -2138,7 +2174,7 @@ async function openOverlay(form, panel, stage){
     const rect = overlayRectForSigStamp(sg, pageHeightPts, scale);
     const wrap = document.createElement('div');
     wrap.className = 'overlay-field sig';
-    wrap.innerHTML = `<span class="tag">${sg.role.replace('member-part1','Member').replace('witness','Witness').replace('member-part2','Member (Part 2)')}</span>
+    wrap.innerHTML = `<span class="tag">${signatureStampLabel(sg, form)}</span>
       <button type="button" class="overlay-clearsig">clear</button>`;
     Object.assign(wrap.style, { left: rect.left+'px', top: rect.top+'px', width: rect.width+'px', height: rect.height+'px' });
     moved.push({ el: canvas2, originalParent: canvas2.parentNode, originalNextSibling: canvas2.nextSibling });
@@ -2154,8 +2190,9 @@ async function openOverlay(form, panel, stage){
     requestAnimationFrame(()=>{ sigPadResizers[padId] && sigPadResizers[padId](); });
   });
 
-  // Keep computed/today/profile previews live while staff edit the profile
-  // panel with the overlay open, without needing to re-open it.
+  // Keep computed/today/profile previews — and mirrored repeats of a form's
+  // own own/checkbox fields — live while staff edit the profile panel or the
+  // primary input with the overlay open, without needing to re-open it.
   const refreshPreviews = () => {
     created.forEach(wrap => {
       const df = {
@@ -2164,15 +2201,27 @@ async function openOverlay(form, panel, stage){
         format: wrap.dataset.previewFormat,
         profileKey: wrap.dataset.previewProfileKey,
         text: wrap.dataset.previewText,
+        key: wrap.dataset.previewKey,
+        mark: wrap.dataset.previewMark,
       };
       wrap.querySelector('[data-role="preview-text"]').textContent = overlayPreviewValue(form, df);
     });
   };
+  // A page-wide 'input' listener uppercases every text field's value on the
+  // document's bubble phase, which runs AFTER a listener attached directly
+  // to the field itself. Reading the value synchronously here would catch
+  // it pre-uppercase and never correct — defer to the next tick so the
+  // uppercase transform has already landed.
+  const deferredRefresh = () => setTimeout(refreshPreviews, 0);
   const profileInputs = document.querySelectorAll('.panel-body input, .panel-body select');
-  profileInputs.forEach(inp => inp.addEventListener('input', refreshPreviews));
+  profileInputs.forEach(inp => inp.addEventListener('input', deferredRefresh));
+  mirroredInputs.forEach(inp => {
+    inp.addEventListener('input', deferredRefresh);
+    inp.addEventListener('change', deferredRefresh);
+  });
 
   stage.hidden = false;
-  overlayStates[form.id] = { moved, created, hiddenLists, canvas, profileInputs, refreshPreviews };
+  overlayStates[form.id] = { moved, created, hiddenLists, canvas, profileInputs, mirroredInputs, refreshPreviews: deferredRefresh };
 }
 
 function closeOverlay(form, panel, stage){
@@ -2191,6 +2240,10 @@ function closeOverlay(form, panel, stage){
   state.created.forEach(el => el.remove());
   state.hiddenLists.forEach(fs => { fs.hidden = fs.dataset.overlayHidden === '1'; delete fs.dataset.overlayHidden; });
   state.profileInputs.forEach(inp => inp.removeEventListener('input', state.refreshPreviews));
+  (state.mirroredInputs || []).forEach(inp => {
+    inp.removeEventListener('input', state.refreshPreviews);
+    inp.removeEventListener('change', state.refreshPreviews);
+  });
 
   stage.hidden = true;
   stage.innerHTML = '';
