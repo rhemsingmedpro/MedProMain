@@ -1096,11 +1096,18 @@ async function loadTemplateBytes(url) {
   return await res.arrayBuffer();
 }
 
+function isLikelyMobileDevice() {
+  const uaMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  const touchCapable = (navigator.maxTouchPoints || 0) > 0;
+  return uaMobile || touchCapable;
+}
+
 async function shareOrDownloadPdf(bytes, filename, shareTitle) {
   const blob = new Blob([bytes], { type: 'application/pdf' });
   const file = new File([blob], filename, { type: 'application/pdf' });
 
-  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+  const canTryShare = isLikelyMobileDevice() && navigator.canShare && navigator.canShare({ files: [file] });
+  if (canTryShare) {
     try {
       await navigator.share({ files: [file], title: shareTitle });
       return;
