@@ -1132,12 +1132,14 @@ async function shareOrDownloadPdf(bytes, filename, shareTitle) {
 const CYLINDER_UNIT_WEIGHT_KG = { E: 4, D: 3, C: 2, M6: 1 };
 
 // Row baselines (pt) for the dangerous goods table on the VanKam BOL,
-// measured against the template — one row per cylinder type actually shipped.
+// measured against the template — one row per cylinder type actually shipped,
+// plus a final summary row for total racks/dimensions/weight.
 const BOL_TABLE_ROWS = [
   { textY: 517, lwhY: 513 },
   { textY: 498, lwhY: 494 },
   { textY: 479, lwhY: 475 },
-  { textY: 460, lwhY: 456 }
+  { textY: 460, lwhY: 456 },
+  { textY: 441, lwhY: 437 }
 ];
 const BOL_WEIGHT_COL_X = 525;
 
@@ -1162,17 +1164,17 @@ async function fillVanKamBOL(s) {
 
   draw(formatDateDisplay(s.DateSent), 494.4, 751.2, 10);
 
-  draw(shipperAddr.Name || s.Office, 28.8, 652.8);
-  draw(shipperAddr.Street, 28.8, 628.8);
-  draw(shipperAddr.City, 28.8, 604.8);
-  draw(shipperAddr.Province, 168, 604.8);
-  draw(shipperAddr.PostalCode, 240, 604.8);
+  draw(shipperAddr.Name || s.Office, 46.8, 652.8);
+  draw(shipperAddr.Street, 46.8, 628.8);
+  draw(shipperAddr.City, 46.8, 604.8);
+  draw(shipperAddr.Province, 186, 604.8);
+  draw(shipperAddr.PostalCode, 258, 604.8);
 
-  draw(consigneeAddr.Name || s.Destination, 295.2, 652.8);
-  draw(consigneeAddr.Street, 295.2, 628.8);
-  draw(consigneeAddr.City, 295.2, 604.8);
-  draw(consigneeAddr.Province, 434.4, 604.8);
-  draw(consigneeAddr.PostalCode, 506.4, 604.8);
+  draw(consigneeAddr.Name || s.Destination, 313.2, 652.8);
+  draw(consigneeAddr.Street, 313.2, 628.8);
+  draw(consigneeAddr.City, 313.2, 604.8);
+  draw(consigneeAddr.Province, 452.4, 604.8);
+  draw(consigneeAddr.PostalCode, 524.4, 604.8);
 
   // Dangerous goods table — one row per cylinder size actually shipped.
   const cylinderRows = [
@@ -1183,27 +1185,33 @@ async function fillVanKamBOL(s) {
   ].filter(r => r.qty > 0);
 
   cylinderRows.forEach((row, i) => {
-    if (i >= BOL_TABLE_ROWS.length) return; // template only has 5 sample rows; shouldn't happen with 4 sizes
-    const { textY, lwhY } = BOL_TABLE_ROWS[i];
-    const weight = (CYLINDER_UNIT_WEIGHT_KG[row.type] || 0) * row.qty;
+    if (i >= BOL_TABLE_ROWS.length) return; // template only has 5 sample rows
+    const { textY } = BOL_TABLE_ROWS[i];
 
-    draw(row.qty, 31.2, textY, 10);                              // Pieces
+    draw(row.qty, 45, textY, 10);                                 // Pieces
     draw('1072', 66.48, textY, 10);                               // U.N. #
     draw(`${row.type} Oxygen Cylinder`, 129.6, textY, 9);         // Description
     draw('N/A', 379.2, textY, 9);                                 // DG Pck Grp
     draw('2.2', 405.47, textY, 10);                               // DG Class
-    draw(STANDARD_RACK_DIMENSIONS.length, 439.40, lwhY, 9);
-    draw(STANDARD_RACK_DIMENSIONS.width, 469.44, lwhY, 9);
-    draw(STANDARD_RACK_DIMENSIONS.height, 498.82, lwhY, 9);
-    draw(`${weight} kg`, BOL_WEIGHT_COL_X, textY, 9);             // Weight (value)
   });
+
+  // Summary row: total racks, standard dimensions, and combined weight —
+  // instead of repeating dimensions on every cylinder-type row.
+  const summaryRowIndex = Math.min(cylinderRows.length, BOL_TABLE_ROWS.length - 1);
+  const summaryRow = BOL_TABLE_ROWS[summaryRowIndex];
+  const totalWeight = cylinderRows.reduce((sum, r) => sum + (CYLINDER_UNIT_WEIGHT_KG[r.type] || 0) * r.qty, 0);
+  draw(`${s.Racks} racks`, 379.2, summaryRow.textY, 9);           // DG Pck Grp
+  draw(STANDARD_RACK_DIMENSIONS.length, 439.40, summaryRow.lwhY, 9);
+  draw(STANDARD_RACK_DIMENSIONS.width, 469.44, summaryRow.lwhY, 9);
+  draw(STANDARD_RACK_DIMENSIONS.height, 498.82, summaryRow.lwhY, 9);
+  draw(`${totalWeight} kg`, BOL_WEIGHT_COL_X, summaryRow.textY, 9); // Weight (value)
 
   if (WEIGHT_UNIT_IS_KG) draw('X', 566.21, 528, 11);              // KG checkbox (table-wide)
 
   draw(EMERGENCY_RESPONSE_PHONE, 39.11, 291, 9);
   if (FREIGHT_IS_PREPAID) draw('X', 263.04, 339.84, 11);
 
-  draw(s.Shipper, 220.8, 139.2, 10);
+  draw(s.Shipper, 200, 139.2, 10);
 
   draw(`${s.Office}${shipperAddr.Name ? ' - ' + shipperAddr.Name : ''}`, 96, 120, 9);
   draw(s.Shipper, 96, 96, 9);
