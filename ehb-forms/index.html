@@ -246,7 +246,7 @@
   }
   .overlay-field.sig .tag{background:var(--mp-green);}
   .overlay-field.preview .tag{background:var(--faint);}
-  .overlay-field input[type=checkbox]{width:100%;height:100%;margin:0;cursor:pointer;}
+  .overlay-field input[type=checkbox]{width:100%;height:100%;margin:0;cursor:pointer;touch-action:manipulation;}
   .overlay-field canvas.sig-pad{width:100%;height:100%;display:block;cursor:crosshair;touch-action:none;background:transparent;}
   .overlay-clearsig{
     position:absolute;right:2px;bottom:2px;font-size:9px;padding:1px 5px;
@@ -1982,12 +1982,22 @@ function overlayRectForDrawField(df, pageHeightPts, scale){
   const w = df.w != null ? df.w : (df.maxWidth || 120);
   const h = df.h != null ? df.h : (df.size ? df.size * 1.6 : 16);
   const boxY = df.h != null ? df.y : df.y - (h - (df.size || 10)) * 0.3;
-  return {
-    left: df.x * scale,
-    top: (pageHeightPts - boxY - h) * scale,
-    width: w * scale,
-    height: h * scale,
-  };
+  let left = df.x * scale;
+  let top = (pageHeightPts - boxY - h) * scale;
+  let width = w * scale;
+  let height = h * scale;
+
+  // Checkbox boxes in PDF points (a handful of pt) can render well under any
+  // usable touch target on a phone once scaled to fit the screen — pad up to
+  // a minimum tappable size, centered on the true position, so the checkbox
+  // is actually hittable with a finger.
+  if (df.source === 'checkbox'){
+    const MIN = 32; // css px
+    if (width < MIN){ left -= (MIN - width) / 2; width = MIN; }
+    if (height < MIN){ top -= (MIN - height) / 2; height = MIN; }
+  }
+
+  return { left, top, width, height };
 }
 
 function overlayRectForSigStamp(sg, pageHeightPts, scale){
