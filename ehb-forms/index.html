@@ -6,6 +6,7 @@
 <title>MedPro Form Assembler</title>
 <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
@@ -219,6 +220,37 @@
   }
   .btn-clear-sig:hover{background:var(--raise);color:var(--ink);}
 
+  /* ---------- PDF-overlay preview (pilot: smokingandheatsource only) ---------- */
+  .overlay-togglebar{margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .overlay-stage{
+    position:relative;margin:0 auto 14px;width:max-content;max-width:100%;overflow:hidden;
+    touch-action:none; /* iOS: without this, native pinch-zoom can desync the
+                           overlay fields from the canvas underneath */
+    box-shadow:0 3px 22px rgba(21,37,72,.18);background:#fff;
+  }
+  .overlay-stage canvas.overlay-pdfcanvas{display:block;}
+  .overlay-field{position:absolute;box-sizing:border-box;border:1px solid var(--mp-blue);background:rgba(0,59,116,.07);}
+  .overlay-field.sig{border-color:var(--mp-green);background:rgba(86,175,49,.08);border-style:dashed;}
+  .overlay-field.preview{
+    border-style:dotted;border-color:var(--faint);background:rgba(22,35,58,.03);
+    display:flex;align-items:center;padding:0 3px;font-size:10px;color:var(--dim);overflow:hidden;white-space:nowrap;
+  }
+  .overlay-field .tag{
+    position:absolute;left:0;bottom:100%;margin-bottom:1px;white-space:nowrap;
+    font-family:var(--mono);font-size:8px;letter-spacing:.02em;
+    background:var(--mp-blue);color:#fff;padding:1px 3px;border-radius:2px;
+  }
+  .overlay-field.sig .tag{background:var(--mp-green);}
+  .overlay-field.preview .tag{background:var(--faint);}
+  .overlay-field input[type=checkbox]{width:100%;height:100%;margin:0;cursor:pointer;}
+  .overlay-field canvas.sig-pad{width:100%;height:100%;display:block;cursor:crosshair;touch-action:none;background:transparent;}
+  .overlay-clearsig{
+    position:absolute;right:2px;bottom:2px;font-size:9px;padding:1px 5px;
+    background:rgba(255,255,255,.85);border:1px solid var(--line2);border-radius:2px;
+  }
+  .overlay-borrowed-note{font-size:10px;color:var(--faint);margin-top:4px;display:none;}
+  .overlay-borrowed-note.show{display:block;}
+
   .btn{
     font-family:var(--sans);font-size:13px;font-weight:700;
     padding:10px 18px;border-radius:4px;border:1px solid var(--line2);
@@ -301,6 +333,7 @@
             <small>Sign with mouse or finger</small>
             <button type="button" class="btn-clear-sig" data-clear="sig-member">Clear</button>
           </div>
+          <p class="overlay-borrowed-note" id="borrowed-note-sig-member">In use in a form's PDF preview below — sign it there, then switch back to edit here.</p>
         </div>
       </fieldset>
 
@@ -312,6 +345,7 @@
             <small>Sign with mouse or finger</small>
             <button type="button" class="btn-clear-sig" data-clear="sig-witness">Clear</button>
           </div>
+          <p class="overlay-borrowed-note" id="borrowed-note-sig-witness">In use in a form's PDF preview below — sign it there, then switch back to edit here.</p>
         </div>
       </fieldset>
     </div>
@@ -1055,6 +1089,7 @@ function getOwnFieldValue(form, key){
 const sigPads = {};
 const sigPadResizers = {};
 const sigPadSized = {};
+const sigPadCssSize = {}; // canvasId -> last logical {w,h}, for scaling strokes when a canvas is resized
 
 function initSigPad(canvasId){
   const canvas = document.getElementById(canvasId);
@@ -1074,7 +1109,16 @@ function initSigPad(canvasId){
      Fixes here: (1) no-op when the target pixel dimensions already match, which
      covers the URL-bar case entirely since this canvas is a fixed 130px tall
      and 100% of a fixed-width container; (2) save and replay the stroke data
-     around genuine size changes (orientation flip, desktop window drag). */
+     around genuine size changes (orientation flip, desktop window drag).
+
+     toData()/fromData() work in the canvas's own logical (CSS) coordinate
+     space and do NOT rescale to the new size on their own — replaying a
+     signature's raw coordinates onto a box of a different size and shape
+     (e.g. moving from the wide/short profile pad into a form's own,
+     differently-shaped PDF-overlay signature stamp) just draws it at its
+     original position, which overflows or looks "zoomed in" rather than
+     resized to fit. sigPadCssSize tracks each canvas's last logical size so
+     the saved points can be scaled proportionally before replaying. */
   function resize(){
     const ratio = Math.max(window.devicePixelRatio || 1, 1);
     const w = canvas.offsetWidth || 300;
@@ -1087,14 +1131,25 @@ function initSigPad(canvasId){
     let saved = null;
     try { saved = pad && !pad.isEmpty() ? pad.toData() : null; } catch(e){ saved = null; }
 
+    const prevSize = sigPadCssSize[canvasId];
+    const scaleX = (prevSize && prevSize.w > 0) ? w / prevSize.w : 1;
+    const scaleY = (prevSize && prevSize.h > 0) ? h / prevSize.h : 1;
+
     canvas.width = targetW;
     canvas.height = targetH;
     canvas.getContext('2d').scale(ratio, ratio);
+    sigPadCssSize[canvasId] = { w, h };
 
-    // Setting .width/.height cleared the bitmap; replay the strokes onto it.
-    // fromData() re-renders at the new scale, so strokes reflow rather than
-    // stretch. Also restores _isEmpty to a truthful value.
+    // Setting .width/.height cleared the bitmap; replay the strokes onto it,
+    // scaled to fit the (possibly very different) new box. Also restores
+    // _isEmpty to a truthful value.
     if (saved && saved.length){
+      if (scaleX !== 1 || scaleY !== 1){
+        saved = saved.map(group => ({
+          ...group,
+          points: (group.points || []).map(pt => ({ ...pt, x: pt.x * scaleX, y: pt.y * scaleY })),
+        }));
+      }
       try { pad.fromData(saved); } catch(e){ /* leave blank rather than throw */ }
     }
   }
@@ -1194,6 +1249,7 @@ function renderAccordion(){
     const panel = document.createElement('div');
     panel.className = 'accordion-panel';
     panel.innerHTML = buildFormPanelHtml(form);
+    addOverlayToggle(form, panel);
 
     trigger.addEventListener('click', ()=>{
       const open = panel.classList.toggle('open');
@@ -1871,6 +1927,248 @@ function resolveSignaturePadId(role, form){
     return `sig-${String(role).slice(7)}-${form.id}`;
   }
   return null;
+}
+
+/* =======================================================================
+   PDF-overlay preview — pilot
+   -----------------------------------------------------------------------
+   Renders the form's actual PDF page as a background (pdf.js) and lays the
+   SAME live input/signature elements the plain list already uses on top of
+   it in their real PDF-point positions, so filling it out looks like
+   filling out the real page. Deliberately reuses the existing elements
+   rather than creating parallel ones bound to the same data — an element
+   is moved into the overlay while it's open and moved back to its exact
+   original spot when it's closed, so there is exactly one source of truth
+   for every value and no sync logic to get wrong.
+
+   Only forms listed in OVERLAY_PILOT_FORM_IDS get the toggle, while this
+   is being proven out on real devices before it's offered on every form.
+   pdf.js is loaded from the same CDN + version as form-builder.html; the
+   worker deliberately stays a normal CDN URL rather than an embedded
+   blob: one — see ios-overlay-test.html's notes on why that combination
+   silently breaks embedded-font rendering on some of these PDFs.
+======================================================================= */
+const OVERLAY_PILOT_FORM_IDS = ['smokingandheatsource'];
+
+if (typeof pdfjsLib !== 'undefined'){
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
+const overlayPdfPageCache = {}; // form.id -> pdf.js page object, loaded once
+const overlayStates = {};       // form.id -> bookkeeping for the currently-open overlay, or null
+
+function overlayRectForDrawField(df, pageHeightPts, scale){
+  // Checkbox draws carry an explicit box (w/h). Text draws (today/computed/
+  // profile/static) only carry a baseline y and a font size, so a box is
+  // approximated around it for the overlay — export never uses this, it's
+  // display-only.
+  const w = df.w != null ? df.w : (df.maxWidth || 120);
+  const h = df.h != null ? df.h : (df.size ? df.size * 1.6 : 16);
+  const boxY = df.h != null ? df.y : df.y - (h - (df.size || 10)) * 0.3;
+  return {
+    left: df.x * scale,
+    top: (pageHeightPts - boxY - h) * scale,
+    width: w * scale,
+    height: h * scale,
+  };
+}
+
+function overlayRectForSigStamp(sg, pageHeightPts, scale){
+  return {
+    left: sg.x * scale,
+    top: (pageHeightPts - sg.y - sg.h) * scale,
+    width: sg.w * scale,
+    height: sg.h * scale,
+  };
+}
+
+/* Live text for the drawFields sources that don't have a real panel input
+   (computed/today/profile/static) — display-only preview, recomputed each
+   time the overlay (re)opens or the profile changes while it's open. */
+function overlayPreviewValue(form, df){
+  const profile = getProfile();
+  switch (df.source){
+    case 'today':    return formatToday(df.format);
+    case 'computed':  return computeProfileValue(df.recipe, profile);
+    case 'profile':   return profile[df.profileKey] || '';
+    case 'static':    return df.text || '';
+    default:          return '';
+  }
+}
+
+function addOverlayToggle(form, panel){
+  if (!OVERLAY_PILOT_FORM_IDS.includes(form.id)) return;
+  if (typeof pdfjsLib === 'undefined') return; // CDN blocked — plain list still works fine
+
+  const bar = document.createElement('div');
+  bar.className = 'overlay-togglebar';
+  bar.innerHTML = `<button type="button" class="btn mini" data-role="overlay-toggle">View as PDF</button>
+    <span class="note" style="margin:0;">See this form laid out like the real page, and tap fields directly on it.</span>`;
+  panel.insertBefore(bar, panel.firstChild);
+
+  const stage = document.createElement('div');
+  stage.className = 'overlay-stage';
+  stage.hidden = true;
+  panel.insertBefore(stage, bar.nextSibling);
+
+  const btn = bar.querySelector('[data-role="overlay-toggle"]');
+  btn.addEventListener('click', async ()=>{
+    if (!stage.hidden){
+      closeOverlay(form, panel, stage);
+      btn.textContent = 'View as PDF';
+      return;
+    }
+    btn.disabled = true;
+    const prevLabel = btn.textContent;
+    btn.textContent = 'Loading…';
+    try {
+      await openOverlay(form, panel, stage);
+      btn.textContent = 'View as list';
+    } catch(e){
+      console.error(e);
+      stage.hidden = true;
+      btn.textContent = prevLabel;
+      alert('Could not load the PDF preview: ' + e.message);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+}
+
+async function getOverlayPdfPage(form){
+  if (overlayPdfPageCache[form.id]) return overlayPdfPageCache[form.id];
+  const bytes = form.getPdfBytes();
+  const doc = await pdfjsLib.getDocument({ data: bytes.slice() }).promise;
+  const page = await doc.getPage(1); // page 0 in our convention, pdf.js is 1-indexed
+  overlayPdfPageCache[form.id] = page;
+  return page;
+}
+
+async function openOverlay(form, panel, stage){
+  const page = await getOverlayPdfPage(form);
+  const view = page.view; // [x0,y0,x1,y1] in PDF points
+  const pageWidthPts = view[2] - view[0], pageHeightPts = view[3] - view[1];
+
+  const availW = Math.max(240, panel.clientWidth - 4);
+  const scale = Math.min(availW / pageWidthPts, 2.5);
+  const dpr = Math.max(window.devicePixelRatio || 1, 1);
+  const viewport = page.getViewport({ scale });
+
+  stage.innerHTML = '';
+  const canvas = document.createElement('canvas');
+  canvas.className = 'overlay-pdfcanvas';
+  canvas.width = Math.floor(viewport.width * dpr);
+  canvas.height = Math.floor(viewport.height * dpr);
+  canvas.style.width = viewport.width + 'px';
+  canvas.style.height = viewport.height + 'px';
+  stage.appendChild(canvas);
+  stage.style.width = viewport.width + 'px';
+  await page.render({
+    canvasContext: canvas.getContext('2d'),
+    viewport,
+    transform: dpr !== 1 ? [dpr,0,0,dpr,0,0] : undefined,
+  }).promise;
+
+  const moved = [];   // {el, originalParent, originalNextSibling} — real elements borrowed from the panel
+  const created = []; // preview-only elements this overlay created, just removed on close
+
+  // Hide the plain-list fieldsets (not removed — restored on close).
+  const hiddenLists = [...panel.querySelectorAll('fieldset')];
+  hiddenLists.forEach(fs => { fs.dataset.overlayHidden = fs.hidden ? '1' : '0'; fs.hidden = true; });
+
+  (form.drawFields || []).forEach(df => {
+    const rect = overlayRectForDrawField(df, pageHeightPts, scale);
+    if (df.source === 'own' || df.source === 'checkbox'){
+      const el = document.getElementById(`f-${form.id}-${df.key}`);
+      if (!el) return;
+      const wrap = document.createElement('div');
+      wrap.className = 'overlay-field';
+      wrap.innerHTML = `<span class="tag">${df.label || df.key}</span>`;
+      Object.assign(wrap.style, { left: rect.left+'px', top: rect.top+'px', width: rect.width+'px', height: rect.height+'px' });
+      moved.push({ el, originalParent: el.parentNode, originalNextSibling: el.nextSibling });
+      wrap.appendChild(el);
+      stage.appendChild(wrap);
+    } else {
+      const wrap = document.createElement('div');
+      wrap.className = 'overlay-field preview';
+      wrap.innerHTML = `<span class="tag">${df.label || df.key}</span><span data-role="preview-text"></span>`;
+      Object.assign(wrap.style, { left: rect.left+'px', top: rect.top+'px', width: rect.width+'px', height: rect.height+'px' });
+      wrap.querySelector('[data-role="preview-text"]').textContent = overlayPreviewValue(form, df);
+      wrap.dataset.previewSource = df.source;
+      wrap.dataset.previewRecipe = df.recipe || '';
+      wrap.dataset.previewFormat = df.format || '';
+      wrap.dataset.previewProfileKey = df.profileKey || '';
+      wrap.dataset.previewText = df.text || '';
+      stage.appendChild(wrap);
+      created.push(wrap);
+    }
+  });
+
+  (form.signatureStamps || []).forEach(sg => {
+    const padId = resolveSignaturePadId(sg.role, form);
+    const canvas2 = padId && document.getElementById(padId);
+    if (!canvas2) return;
+    const rect = overlayRectForSigStamp(sg, pageHeightPts, scale);
+    const wrap = document.createElement('div');
+    wrap.className = 'overlay-field sig';
+    wrap.innerHTML = `<span class="tag">${sg.role.replace('member-part1','Member').replace('witness','Witness').replace('member-part2','Member (Part 2)')}</span>
+      <button type="button" class="overlay-clearsig">clear</button>`;
+    Object.assign(wrap.style, { left: rect.left+'px', top: rect.top+'px', width: rect.width+'px', height: rect.height+'px' });
+    moved.push({ el: canvas2, originalParent: canvas2.parentNode, originalNextSibling: canvas2.nextSibling });
+    wrap.insertBefore(canvas2, wrap.firstChild.nextSibling);
+    wrap.querySelector('.overlay-clearsig').addEventListener('click', ()=> sigPads[padId] && sigPads[padId].clear());
+    stage.appendChild(wrap);
+
+    const note = document.getElementById(`borrowed-note-${padId}`);
+    if (note) note.classList.add('show');
+
+    // The canvas just changed CSS size — reuse the app's own resize/ink-
+    // preserving logic rather than a second copy of it.
+    requestAnimationFrame(()=>{ sigPadResizers[padId] && sigPadResizers[padId](); });
+  });
+
+  // Keep computed/today/profile previews live while staff edit the profile
+  // panel with the overlay open, without needing to re-open it.
+  const refreshPreviews = () => {
+    created.forEach(wrap => {
+      const df = {
+        source: wrap.dataset.previewSource,
+        recipe: wrap.dataset.previewRecipe,
+        format: wrap.dataset.previewFormat,
+        profileKey: wrap.dataset.previewProfileKey,
+        text: wrap.dataset.previewText,
+      };
+      wrap.querySelector('[data-role="preview-text"]').textContent = overlayPreviewValue(form, df);
+    });
+  };
+  const profileInputs = document.querySelectorAll('.panel-body input, .panel-body select');
+  profileInputs.forEach(inp => inp.addEventListener('input', refreshPreviews));
+
+  stage.hidden = false;
+  overlayStates[form.id] = { moved, created, hiddenLists, canvas, profileInputs, refreshPreviews };
+}
+
+function closeOverlay(form, panel, stage){
+  const state = overlayStates[form.id];
+  if (!state) { stage.hidden = true; stage.innerHTML = ''; return; }
+
+  state.moved.forEach(({ el, originalParent, originalNextSibling })=>{
+    originalParent.insertBefore(el, originalNextSibling);
+    if (el.tagName === 'CANVAS'){
+      const padId = el.id;
+      const note = document.getElementById(`borrowed-note-${padId}`);
+      if (note) note.classList.remove('show');
+      requestAnimationFrame(()=>{ sigPadResizers[padId] && sigPadResizers[padId](); });
+    }
+  });
+  state.created.forEach(el => el.remove());
+  state.hiddenLists.forEach(fs => { fs.hidden = fs.dataset.overlayHidden === '1'; delete fs.dataset.overlayHidden; });
+  state.profileInputs.forEach(inp => inp.removeEventListener('input', state.refreshPreviews));
+
+  stage.hidden = true;
+  stage.innerHTML = '';
+  overlayStates[form.id] = null;
 }
 
 function trySetText(pdfForm, fieldName, value){
