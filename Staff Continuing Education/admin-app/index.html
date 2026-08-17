@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MedPro Respiratory — CE Admin</title>
+<style>
+  :root {
+    --navy: #003D79;
+    --navy-dark: #002B57;
+    --green: #50B948;
+    --green-dark: #3d9636;
+    --bg: #F4F7FA;
+    --card-bg: #FFFFFF;
+    --text: #1D2B3A;
+    --text-muted: #5A6B7B;
+    --border: #E1E7EE;
+    --amber: #B8860B;
+    --amber-bg: #FBF3E2;
+    --green-status-bg: #E6F3EA;
+    --red: #c0392b;
+    --red-bg: #fbe9e6;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  button { font-family: inherit; cursor: pointer; }
+  input, select, textarea { font-family: inherit; }
+  table { border-collapse: collapse; width: 100%; }
+
+  /* ---- Login ---- */
+  #loginScreen { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--navy); padding: 24px; }
+  .login-card { background: #fff; border-radius: var(--radius); padding: 40px 36px; width: 100%; max-width: 380px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.25); }
+  .login-card img.logo { width: 180px; margin-bottom: 20px; }
+  .login-card h1 { color: var(--navy); font-size: 17px; margin: 0 0 4px; }
+  .login-card p.sub { color: var(--text-muted); font-size: 13px; margin: 0 0 28px; }
+  .field { text-align: left; margin-bottom: 16px; }
+  .field label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .field input, .field select, .field textarea { width: 100%; padding: 10px 12px; border-radius: 6px; border: 1px solid var(--border); background: #fff; color: var(--text); font-size: 14px; }
+  .field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--navy); }
+  .btn-primary { padding: 10px 18px; border-radius: 6px; border: none; background: var(--navy); color: #fff; font-weight: 600; font-size: 13px; }
+  .btn-primary:hover { background: var(--navy-dark); }
+  .btn-primary:disabled { opacity: 0.5; }
+  .login-card .btn-primary { width: 100%; padding: 12px; margin-top: 6px; }
+  .error-text { color: var(--red); font-size: 13px; margin-top: 14px; min-height: 18px; }
+
+  /* ---- Shell ---- */
+  #appScreen { display: none; min-height: 100vh; flex-direction: column; }
+  header.topbar { display: flex; align-items: center; justify-content: space-between; background: var(--navy); padding: 14px 24px; }
+  header.topbar img.logo { height: 34px; }
+  .who { display: flex; align-items: center; gap: 14px; }
+  .who .name { font-size: 14px; font-weight: 600; color: #fff; }
+  .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text); padding: 8px 14px; border-radius: 6px; font-size: 13px; }
+  .btn-ghost:hover { background: var(--bg); }
+  .btn-ghost.on-dark { border-color: rgba(255,255,255,0.4); color: #fff; }
+  .btn-ghost.on-dark:hover { background: rgba(255,255,255,0.1); }
+  .btn-danger { background: transparent; border: 1px solid #e6b8b0; color: var(--red); padding: 6px 10px; border-radius: 6px; font-size: 12px; }
+  .btn-danger:hover { background: var(--red-bg); }
+
+  nav.tabs { display: flex; gap: 4px; background: #fff; border-bottom: 1px solid var(--border); padding: 0 24px; }
+  nav.tabs button { background: none; border: none; padding: 14px 16px; font-size: 13px; font-weight: 600; color: var(--text-muted); border-bottom: 3px solid transparent; }
+  nav.tabs button.active { color: var(--navy); border-bottom-color: var(--green); }
+
+  main { flex: 1; padding: 28px 24px 60px; max-width: 1180px; margin: 0 auto; width: 100%; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; flex-wrap: wrap; gap: 10px; }
+  .panel-head h2 { font-size: 18px; margin: 0; }
+  .filters { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: flex-end; }
+  .filters select, .filters input { padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border); font-size: 13px; background: #fff; }
+  .filters .field { margin: 0; }
+
+  .card-table { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; overflow-x: auto; }
+  th, td { text-align: left; padding: 10px 14px; font-size: 13px; border-bottom: 1px solid #EEF2F7; white-space: nowrap; }
+  th { background: #EEF2F7; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--navy); font-weight: 700; }
+  tr:last-child td { border-bottom: none; }
+  tr.row-hover:hover { background: #FAFBFD; cursor: pointer; }
+
+  .pill { display: inline-block; padding: 4px 12px; border-radius: 999px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
+  .pill.pending { background: var(--amber-bg); color: var(--amber); }
+  .pill.signed { background: var(--green-status-bg); color: var(--green-dark); }
+  .pill.inactive { background: #EEF0F3; color: var(--text-muted); }
+  .pill.active { background: var(--green-status-bg); color: var(--green-dark); }
+
+  .empty-state { color: var(--text-muted); font-size: 14px; padding: 40px 0; text-align: center; }
+
+  /* ---- Modal ---- */
+  #modalOverlay { display: none; position: fixed; inset: 0; background: rgba(18,30,48,0.55); align-items: center; justify-content: center; padding: 20px; z-index: 100; }
+  .modal-panel { background: var(--card-bg); border-radius: var(--radius); width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; }
+  .modal-head { padding: 18px 22px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .modal-head h3 { margin: 0; font-size: 16px; }
+  .modal-close { background: none; border: none; font-size: 20px; color: var(--text-muted); }
+  .modal-body { padding: 20px 22px; }
+  .modal-foot { padding: 16px 22px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+  .modal-error { color: var(--red); font-size: 13px; margin-top: 4px; min-height: 16px; }
+
+  /* ---- Report tab ---- */
+  .report-total { margin: 14px 0; font-size: 14px; font-weight: 700; color: var(--navy); }
+  .report-actions { margin-top: 16px; }
+</style>
+</head>
+<body>
+
+<div id="loginScreen">
+  <div class="login-card">
+    <img class="logo" src="../assets/MedPro-logo.png" alt="MedPro Respiratory Care">
+    <h1>Continuing Education — Admin</h1>
+    <p class="sub">Sign in with your admin email and password</p>
+    <div class="field"><label for="adminEmail">Email</label><input id="adminEmail" type="email" autocomplete="username" autocapitalize="none"></div>
+    <div class="field"><label for="adminPassword">Password</label><input id="adminPassword" type="password" autocomplete="current-password"></div>
+    <button class="btn-primary" id="loginBtn">Sign In</button>
+    <div class="error-text" id="loginError"></div>
+  </div>
+</div>
+
+<div id="appScreen">
+  <header class="topbar">
+    <img class="logo" src="../assets/MedPro-logo.png" alt="MedPro Respiratory Care">
+    <div class="who">
+      <div class="name" id="whoName"></div>
+      <button class="btn-ghost on-dark" id="signOutBtn">Sign Out</button>
+    </div>
+  </header>
+  <nav class="tabs">
+    <button data-tab="records" class="active">Records</button>
+    <button data-tab="staff">Staff</button>
+    <button data-tab="admins">Admins</button>
+    <button data-tab="report">Report</button>
+  </nav>
+  <main>
+    <section class="panel active" id="panel-records">
+      <div class="panel-head"><h2>CE Records</h2></div>
+      <div class="filters">
+        <div class="field"><label>Staff</label><select id="filterStaff"><option value="">All Staff</option></select></div>
+        <div class="field"><label>Status</label><select id="filterStatus"><option value="">All Statuses</option><option>Pending Signoff</option><option>Signed</option></select></div>
+      </div>
+      <div class="card-table"><table><thead><tr>
+        <th>Date</th><th>Staff</th><th>Event</th><th>Location</th><th>Role</th><th>Hours</th><th>Document</th><th>Status</th><th></th>
+      </tr></thead><tbody id="recordsBody"></tbody></table></div>
+    </section>
+
+    <section class="panel" id="panel-staff">
+      <div class="panel-head"><h2>Staff</h2><button class="btn-primary" id="addStaffBtn">+ Add Staff</button></div>
+      <div class="card-table"><table><thead><tr>
+        <th>Name</th><th>Position</th><th>Email</th><th>Manager</th><th>Status</th>
+      </tr></thead><tbody id="staffBody"></tbody></table></div>
+    </section>
+
+    <section class="panel" id="panel-admins">
+      <div class="panel-head"><h2>Admins</h2><button class="btn-primary" id="addAdminBtn">+ Add Admin</button></div>
+      <div class="card-table"><table><thead><tr><th>Name</th><th>Email</th><th></th></tr></thead><tbody id="adminsBody"></tbody></table></div>
+    </section>
+
+    <section class="panel" id="panel-report">
+      <div class="panel-head"><h2>Compliance Report</h2></div>
+      <div class="filters">
+        <div class="field"><label>Staff</label><select id="r_staff"><option value="">All Staff</option></select></div>
+        <div class="field"><label>From</label><input id="r_from" type="date"></div>
+        <div class="field"><label>To</label><input id="r_to" type="date"></div>
+        <button class="btn-ghost" id="runReportBtn">Run Report</button>
+      </div>
+      <div id="reportResults"></div>
+    </section>
+  </main>
+</div>
+
+<div id="modalOverlay">
+  <div class="modal-panel">
+    <div class="modal-head"><h3 id="modalTitle"></h3><button class="modal-close" id="modalCloseBtn">&times;</button></div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-foot" id="modalFoot"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="../assets/medpro-pdf-report.js"></script>
+<script>
+  // Set this to your deployed Apps Script web app URL (Deploy > Manage deployments).
+  var CONFIG = { API_URL: 'https://script.google.com/macros/s/AKfycbzaRQrIkyO_aY1urudYSUqsfDftL83Ktsx6-bqTt8xke2BNyNYUNC-3RwXWGcqg8yqm/exec' };
+  var STORAGE_KEY = 'mp_ce_admin_session';
+
+  var state = { admin: null, staff: [], admins: [], records: [] };
+
+  function apiCall(action, payload) {
+    return fetch(CONFIG.API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: action, payload: payload || {} })
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (r) { if (!r.ok) throw new Error(r.error || 'Request failed'); return r.data; });
+  }
+
+  function escapeHtml(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function statusClass(status) { return status === 'Signed' ? 'signed' : 'pending'; }
+  function isActive(s) { return s.Active === true || s.Active === 'TRUE' || s.Active === 'Y'; }
+
+  var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  function formatDate(value) {
+    if (!value) return '—';
+    var datePart = String(value).slice(0, 10);
+    var m = datePart.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return String(value);
+    return m[3] + '-' + MONTHS[parseInt(m[2], 10) - 1] + '-' + m[1];
+  }
+
+  function managerName(managerAdminId) {
+    var m = state.admins.find(function (a) { return a.AdminID === managerAdminId; });
+    return m ? m.Name : '—';
+  }
+
+  // ---- Login ----
+  document.getElementById('loginBtn').addEventListener('click', doLogin);
+  document.getElementById('adminPassword').addEventListener('keydown', function (e) { if (e.key === 'Enter') doLogin(); });
+
+  function doLogin() {
+    var email = document.getElementById('adminEmail').value.trim();
+    var password = document.getElementById('adminPassword').value;
+    var errEl = document.getElementById('loginError');
+    errEl.textContent = '';
+    if (!email || !password) { errEl.textContent = 'Enter your email and password.'; return; }
+    var btn = document.getElementById('loginBtn');
+    btn.disabled = true;
+    apiCall('adminLogin', { username: email, password: password })
+      .then(function (admin) {
+        if (!admin) { errEl.textContent = 'Incorrect email or password.'; btn.disabled = false; return; }
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(admin));
+        state.admin = admin;
+        showApp();
+      })
+      .catch(function (e) { errEl.textContent = e.message; btn.disabled = false; });
+  }
+
+  document.getElementById('signOutBtn').addEventListener('click', function () {
+    localStorage.removeItem(STORAGE_KEY);
+    location.reload();
+  });
+
+  function showApp() {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('appScreen').style.display = 'flex';
+    document.getElementById('whoName').textContent = state.admin.Name;
+    setDefaultReportDates();
+    refreshAll();
+  }
+
+  // ---- Tabs ----
+  document.querySelectorAll('nav.tabs button').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('nav.tabs button').forEach(function (b) { b.classList.remove('active'); });
+      document.querySelectorAll('.panel').forEach(function (p) { p.classList.remove('active'); });
+      btn.classList.add('active');
+      document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+    });
+  });
+
+  function refreshAll() {
+    Promise.all([
+      apiCall('listStaff', {}),
+      apiCall('listAdmins', {}),
+      apiCall('getAllRecords', {})
+    ]).then(function (r) {
+      state.staff = r[0]; state.admins = r[1]; state.records = r[2];
+      renderStaff(); renderAdmins(); renderRecords(); populateStaffFilters();
+    }).catch(function (e) { alert(e.message); });
+  }
+
+  // ---- Modal helpers ----
+  var modalOverlay = document.getElementById('modalOverlay');
+  document.getElementById('modalCloseBtn').addEventListener('click', closeModal);
+  modalOverlay.addEventListener('click', function (e) { if (e.target === modalOverlay) closeModal(); });
+  function closeModal() { modalOverlay.style.display = 'none'; document.getElementById('modalBody').innerHTML = ''; document.getElementById('modalFoot').innerHTML = ''; }
+  function openModal(title, bodyHtml, footHtml) {
+    document.getElementById('modalTitle').textContent = title;
+    document.getElementById('modalBody').innerHTML = bodyHtml;
+    document.getElementById('modalFoot').innerHTML = footHtml || '';
+    modalOverlay.style.display = 'flex';
+  }
+
+  function populateStaffFilters() {
+    var options = '<option value="">All Staff</option>' + state.staff.map(function (s) {
+      return '<option value="' + s.StaffID + '">' + escapeHtml(s.Name) + '</option>';
+    }).join('');
+    ['filterStaff', 'r_staff'].forEach(function (id) {
+      var sel = document.getElementById(id);
+      var prev = sel.value;
+      sel.innerHTML = options;
+      sel.value = prev;
+    });
+  }
+
+  // =========================================================
+  // RECORDS
+  // =========================================================
+  ['filterStaff', 'filterStatus'].forEach(function (id) {
+    document.getElementById(id).addEventListener('change', renderRecords);
+  });
+
+  function renderRecords() {
+    var staffId = document.getElementById('filterStaff').value;
+    var status = document.getElementById('filterStatus').value;
+    var rows = state.records.filter(function (r) {
+      return (!staffId || r.StaffID === staffId) && (!status || r.Status === status);
+    });
+    var body = document.getElementById('recordsBody');
+    if (rows.length === 0) { body.innerHTML = '<tr><td colspan="9" class="empty-state">No records match these filters.</td></tr>'; return; }
+    body.innerHTML = rows.map(function (r) {
+      return '<tr>' +
+        '<td>' + formatDate(r.DateAttended) + '</td>' +
+        '<td>' + escapeHtml(r.StaffName) + '</td>' +
+        '<td>' + escapeHtml(r.EventDescription) + '</td>' +
+        '<td>' + escapeHtml(r.Location || '—') + '</td>' +
+        '<td>' + escapeHtml(r.Role) + '</td>' +
+        '<td>' + (r.HoursClaimed || 0) + '</td>' +
+        '<td>' + (r.DocumentURL ? '<a href="' + escapeHtml(r.DocumentURL) + '" target="_blank" rel="noopener">View</a>' : '—') + '</td>' +
+        '<td><span class="pill ' + statusClass(r.Status) + '">' + escapeHtml(r.Status) + '</span></td>' +
+        '<td>' +
+          (r.Status === 'Pending Signoff' ? '<button class="btn-ghost" data-signoff="' + r.RecordID + '">Sign Off</button>' : '') +
+          ' <button class="btn-danger" data-delete="' + r.RecordID + '">Delete</button>' +
+        '</td>' +
+        '</tr>';
+    }).join('');
+    body.querySelectorAll('[data-signoff]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        apiCall('signOffRecord', { recordId: btn.dataset.signoff, adminId: state.admin.AdminID })
+          .then(refreshAll).catch(function (e) { alert(e.message); });
+      });
+    });
+    body.querySelectorAll('[data-delete]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        if (!confirm('Delete this CE record? This cannot be undone.')) return;
+        apiCall('deleteRecord', { recordId: btn.dataset.delete }).then(refreshAll).catch(function (e) { alert(e.message); });
+      });
+    });
+  }
+
+  // =========================================================
+  // STAFF
+  // =========================================================
+  function renderStaff() {
+    var body = document.getElementById('staffBody');
+    if (state.staff.length === 0) { body.innerHTML = '<tr><td colspan="5" class="empty-state">No staff yet.</td></tr>'; return; }
+    body.innerHTML = state.staff.map(function (s) {
+      var active = isActive(s);
+      return '<tr class="row-hover" data-staff="' + s.StaffID + '">' +
+        '<td>' + escapeHtml(s.Name) + '</td><td>' + escapeHtml(s.Position) + '</td><td>' + escapeHtml(s.Email) + '</td>' +
+        '<td>' + escapeHtml(managerName(s.ManagerAdminID)) + '</td>' +
+        '<td><span class="pill ' + (active ? 'active' : 'inactive') + '">' + (active ? 'Active' : 'Inactive') + '</span></td>' +
+        '</tr>';
+    }).join('');
+    body.querySelectorAll('[data-staff]').forEach(function (row) {
+      row.addEventListener('click', function () { openEditStaff(row.dataset.staff); });
+    });
+  }
+
+  document.getElementById('addStaffBtn').addEventListener('click', function () { openStaffForm(null); });
+
+  function openStaffForm(staff) {
+    var isEdit = !!staff;
+    var managerOptions = '<option value="">— None —</option>' + state.admins.map(function (a) {
+      return '<option value="' + a.AdminID + '" ' + (staff && staff.ManagerAdminID === a.AdminID ? 'selected' : '') + '>' + escapeHtml(a.Name) + '</option>';
+    }).join('');
+    openModal(isEdit ? 'Edit Staff' : 'Add Staff',
+      '<div class="field"><label>Name</label><input id="stName" value="' + (staff ? escapeHtml(staff.Name) : '') + '"></div>' +
+      '<div class="field"><label>Position</label><input id="stPosition" value="' + (staff ? escapeHtml(staff.Position) : '') + '"></div>' +
+      '<div class="field"><label>Email (used as username)</label><input id="stEmail" type="email" value="' + (staff ? escapeHtml(staff.Email) : '') + '"></div>' +
+      '<div class="field"><label>Manager</label><select id="stManager">' + managerOptions + '</select></div>' +
+      (isEdit
+        ? '<div class="field"><label>Status</label><select id="stActive"><option value="true"' + (isActive(staff) ? ' selected' : '') + '>Active</option><option value="false"' + (!isActive(staff) ? ' selected' : '') + '>Inactive</option></select></div>'
+        : '<div class="field"><label>Initial Password</label><input id="stPassword" type="text"></div>') +
+      '<div class="modal-error" id="stError"></div>',
+      (isEdit ? '<button class="btn-ghost" id="stResetPassword">Reset Password</button>' : '') +
+      '<button class="btn-ghost" onclick="closeModal()">Cancel</button><button class="btn-primary" id="stSubmit">Save</button>'
+    );
+
+    if (isEdit) {
+      document.getElementById('stResetPassword').addEventListener('click', function () {
+        var newPassword = prompt('Enter a new password for ' + staff.Name + ':');
+        if (!newPassword) return;
+        apiCall('setStaffPassword', { staffId: staff.StaffID, newPassword: newPassword })
+          .then(function () { alert('Password updated.'); })
+          .catch(function (e) { alert(e.message); });
+      });
+    }
+
+    document.getElementById('stSubmit').addEventListener('click', function () {
+      var payload = {
+        Name: document.getElementById('stName').value.trim(),
+        Position: document.getElementById('stPosition').value.trim(),
+        Email: document.getElementById('stEmail').value.trim(),
+        ManagerAdminID: document.getElementById('stManager').value
+      };
+      if (!payload.Name || !payload.Email) { document.getElementById('stError').textContent = 'Name and email are required.'; return; }
+
+      if (isEdit) {
+        payload.Active = document.getElementById('stActive').value === 'true';
+        apiCall('updateStaff', { staffId: staff.StaffID, updates: payload })
+          .then(function () { closeModal(); refreshAll(); })
+          .catch(function (e) { document.getElementById('stError').textContent = e.message; });
+      } else {
+        var password = document.getElementById('stPassword').value;
+        if (!password) { document.getElementById('stError').textContent = 'Set an initial password.'; return; }
+        apiCall('addStaff', { staff: payload, initialPassword: password })
+          .then(function () { closeModal(); refreshAll(); })
+          .catch(function (e) { document.getElementById('stError').textContent = e.message; });
+      }
+    });
+  }
+
+  function openEditStaff(staffId) {
+    var staff = state.staff.find(function (s) { return s.StaffID === staffId; });
+    if (staff) openStaffForm(staff);
+  }
+
+  // =========================================================
+  // ADMINS
+  // =========================================================
+  function renderAdmins() {
+    var body = document.getElementById('adminsBody');
+    if (state.admins.length === 0) { body.innerHTML = '<tr><td colspan="3" class="empty-state">No admins yet.</td></tr>'; return; }
+    body.innerHTML = state.admins.map(function (a) {
+      return '<tr><td>' + escapeHtml(a.Name) + '</td><td>' + escapeHtml(a.Email) + '</td>' +
+        '<td><button class="btn-ghost" data-reset-admin="' + a.AdminID + '" data-name="' + escapeHtml(a.Name) + '">Reset Password</button></td></tr>';
+    }).join('');
+    body.querySelectorAll('[data-reset-admin]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var newPassword = prompt('Enter a new password for ' + btn.dataset.name + ':');
+        if (!newPassword) return;
+        apiCall('setAdminPassword', { adminId: btn.dataset.resetAdmin, newPassword: newPassword })
+          .then(function () { alert('Password updated.'); })
+          .catch(function (e) { alert(e.message); });
+      });
+    });
+  }
+
+  document.getElementById('addAdminBtn').addEventListener('click', function () {
+    openModal('Add Admin',
+      '<div class="field"><label>Name</label><input id="adName"></div>' +
+      '<div class="field"><label>Email</label><input id="adEmail" type="email"></div>' +
+      '<div class="field"><label>Initial Password</label><input id="adPassword" type="text"></div>' +
+      '<div class="modal-error" id="adError"></div>',
+      '<button class="btn-ghost" onclick="closeModal()">Cancel</button><button class="btn-primary" id="adSubmit">Save</button>'
+    );
+    document.getElementById('adSubmit').addEventListener('click', function () {
+      var payload = { Name: document.getElementById('adName').value.trim(), Email: document.getElementById('adEmail').value.trim() };
+      var password = document.getElementById('adPassword').value;
+      if (!payload.Name || !payload.Email || !password) { document.getElementById('adError').textContent = 'Name, email, and password are required.'; return; }
+      apiCall('addAdmin', { admin: payload, initialPassword: password })
+        .then(function () { closeModal(); refreshAll(); })
+        .catch(function (e) { document.getElementById('adError').textContent = e.message; });
+    });
+  });
+
+  // =========================================================
+  // REPORT
+  // =========================================================
+  function setDefaultReportDates() {
+    var year = new Date().getFullYear();
+    document.getElementById('r_from').value = year + '-01-01';
+    document.getElementById('r_to').value = year + '-12-31';
+  }
+
+  document.getElementById('runReportBtn').addEventListener('click', function () {
+    var staffId = document.getElementById('r_staff').value;
+    var from = document.getElementById('r_from').value;
+    var to = document.getElementById('r_to').value;
+    var results = document.getElementById('reportResults');
+    if (!from || !to) { results.innerHTML = '<div class="empty-state">Choose both a From and To date.</div>'; return; }
+    results.innerHTML = '<div class="empty-state">Loading…</div>';
+
+    apiCall('getReport', { fromDate: from, toDate: to, staffId: staffId || null })
+      .then(function (report) { renderAdminReport(report, from, to, staffId); })
+      .catch(function (e) { results.innerHTML = '<div class="empty-state">' + escapeHtml(e.message) + '</div>'; });
+  });
+
+  function renderAdminReport(report, from, to, staffId) {
+    var results = document.getElementById('reportResults');
+    if (report.records.length === 0) { results.innerHTML = '<div class="empty-state">No records in that date range.</div>'; return; }
+    var showStaffColumn = !staffId;
+    var rowsHtml = report.records.map(function (r) {
+      return '<tr>' +
+        '<td>' + formatDate(r.DateAttended) + '</td>' +
+        (showStaffColumn ? '<td>' + escapeHtml(r.StaffName) + '</td>' : '') +
+        '<td>' + escapeHtml(r.EventDescription) + '</td>' +
+        '<td>' + escapeHtml(r.Location || '—') + '</td>' +
+        '<td>' + escapeHtml(r.Role) + '</td>' +
+        '<td>' + (r.HoursClaimed || 0) + '</td>' +
+        '<td>' + escapeHtml(r.Status) + '</td>' +
+        '</tr>';
+    }).join('');
+    results.innerHTML =
+      '<div class="card-table"><table><thead><tr>' +
+        '<th>Date</th>' + (showStaffColumn ? '<th>Staff</th>' : '') + '<th>Event</th><th>Location</th><th>Role</th><th>Hours</th><th>Status</th>' +
+      '</tr></thead><tbody>' + rowsHtml + '</tbody></table></div>' +
+      '<div class="report-total">Total Hours: ' + report.totalHours.toFixed(2) + '</div>' +
+      '<div class="report-actions"><button class="btn-ghost" id="exportPdfBtn">Export PDF</button></div>';
+
+    document.getElementById('exportPdfBtn').addEventListener('click', function () {
+      var staffLabel = staffId ? (state.staff.find(function (s) { return s.StaffID === staffId; }) || {}).Name : 'All Staff';
+      exportCEReportPDF({
+        subtitle: 'Continuing Education Report',
+        personName: staffLabel || 'All Staff',
+        from: from,
+        to: to,
+        records: report.records,
+        totalHours: report.totalHours,
+        showStaffColumn: showStaffColumn,
+        filename: 'CE-Report_' + (staffLabel || 'All-Staff').replace(/\s+/g, '_') + '_' + from + '_to_' + to + '.pdf'
+      });
+    });
+  }
+
+  // ---- Boot ----
+  (function boot() {
+    var saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try { state.admin = JSON.parse(saved); showApp(); } catch (e) { localStorage.removeItem(STORAGE_KEY); }
+    }
+  })();
+</script>
+</body>
+</html>

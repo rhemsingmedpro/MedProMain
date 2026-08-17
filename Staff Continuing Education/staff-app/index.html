@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MedPro Respiratory — Continuing Education</title>
+<style>
+  :root {
+    --navy: #003D79;
+    --navy-dark: #002B57;
+    --green: #50B948;
+    --green-dark: #3d9636;
+    --bg: #F4F7FA;
+    --card-bg: #FFFFFF;
+    --text: #1D2B3A;
+    --text-muted: #5A6B7B;
+    --border: #E1E7EE;
+    --amber: #B8860B;
+    --amber-bg: #FBF3E2;
+    --green-status-bg: #E6F3EA;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+  button { font-family: inherit; cursor: pointer; }
+  input, select, textarea { font-family: inherit; }
+
+  /* ---- Login screen ---- */
+  #loginScreen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--navy);
+    padding: 24px;
+  }
+  .login-card {
+    background: #fff;
+    border-radius: var(--radius);
+    padding: 40px 36px;
+    width: 100%;
+    max-width: 380px;
+    text-align: center;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.25);
+  }
+  .login-card img.logo { width: 180px; margin-bottom: 20px; }
+  .login-card h1 { color: var(--navy); font-size: 17px; margin: 0 0 4px; }
+  .login-card p.sub { color: var(--text-muted); font-size: 13px; margin: 0 0 28px; }
+  .field { text-align: left; margin-bottom: 16px; }
+  .field label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .field input, .field select, .field textarea {
+    width: 100%; padding: 11px 12px; border-radius: 6px;
+    border: 1px solid var(--border); background: #fff; color: var(--text); font-size: 15px;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--navy); }
+  .btn-primary {
+    width: 100%; padding: 12px; border-radius: 6px; border: none;
+    background: var(--navy); color: #fff; font-weight: 600; font-size: 14px;
+    letter-spacing: 0.02em; margin-top: 6px;
+  }
+  .btn-primary:hover { background: var(--navy-dark); }
+  .btn-primary:disabled { opacity: 0.5; cursor: default; }
+  .btn-primary.auto { width: auto; padding: 10px 18px; margin-top: 0; }
+  .error-text { color: #c0392b; font-size: 13px; margin-top: 14px; min-height: 18px; }
+
+  /* ---- App shell ---- */
+  #appScreen { display: none; min-height: 100vh; flex-direction: column; }
+  header.topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--navy); padding: 14px 24px;
+  }
+  header.topbar img.logo { height: 34px; }
+  .who { display: flex; align-items: center; gap: 14px; }
+  .who .name { font-size: 14px; font-weight: 600; color: #fff; }
+  .who .role { font-size: 12px; color: rgba(255,255,255,0.7); }
+  .btn-ghost {
+    background: transparent; border: 1px solid rgba(255,255,255,0.4); color: #fff;
+    padding: 8px 14px; border-radius: 6px; font-size: 13px;
+  }
+  .btn-ghost:hover { background: rgba(255,255,255,0.1); }
+  .btn-ghost.dark { border-color: var(--border); color: var(--text); }
+  .btn-ghost.dark:hover { background: var(--bg); }
+
+  nav.tabs {
+    display: flex; gap: 4px; background: #fff; border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+  }
+  nav.tabs button {
+    background: none; border: none; padding: 14px 16px; font-size: 13px; font-weight: 600;
+    color: var(--text-muted); border-bottom: 3px solid transparent;
+  }
+  nav.tabs button.active { color: var(--navy); border-bottom-color: var(--green); }
+
+  main { flex: 1; padding: 28px 24px 60px; max-width: 920px; margin: 0 auto; width: 100%; }
+  main h2 { font-size: 18px; margin: 0 0 4px; }
+  main p.lead { color: var(--text-muted); font-size: 13px; margin: 0 0 24px; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  .record-card {
+    background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 18px 20px; margin-bottom: 12px;
+  }
+  .record-card .top-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+  .record-card h3 { font-size: 15px; margin: 0 0 6px; }
+  .record-card .meta { font-size: 12px; color: var(--text-muted); display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 8px; }
+  .record-card .remarks { font-size: 13px; color: var(--text); margin-top: 8px; }
+  .record-card a.doc-link { font-size: 12px; color: var(--navy); font-weight: 600; text-decoration: none; }
+  .record-card a.doc-link:hover { text-decoration: underline; }
+  .pill {
+    display: inline-block; padding: 4px 12px; border-radius: 999px; font-size: 11px;
+    font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap;
+  }
+  .pill.pending { background: var(--amber-bg); color: var(--amber); }
+  .pill.signed { background: var(--green-status-bg); color: var(--green-dark); }
+  .empty-state { color: var(--text-muted); font-size: 14px; padding: 40px 0; text-align: center; }
+
+  /* ---- Add record form ---- */
+  .form-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .form-grid .field.full { grid-column: 1 / -1; }
+  @media (max-width: 640px) { .form-grid { grid-template-columns: 1fr; } }
+  .form-msg { font-size: 13px; margin-top: 14px; min-height: 18px; }
+  .form-msg.success { color: var(--green-dark); }
+  .form-msg.error { color: #c0392b; }
+
+  /* ---- Report tab ---- */
+  .report-controls { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+  .report-controls .field { margin-bottom: 0; }
+  table.report-table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  table.report-table th, table.report-table td { text-align: left; padding: 10px 12px; font-size: 13px; border-bottom: 1px solid var(--border); }
+  table.report-table th { background: #EEF2F7; color: var(--navy); font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: 0.03em; }
+  table.report-table tr:last-child td { border-bottom: none; }
+  .report-total { margin: 14px 0; font-size: 14px; font-weight: 700; color: var(--navy); }
+  .report-actions { margin-top: 16px; }
+</style>
+</head>
+<body>
+
+<div id="loginScreen">
+  <div class="login-card">
+    <img class="logo" src="../assets/MedPro-logo.png" alt="MedPro Respiratory Care">
+    <h1>Continuing Education</h1>
+    <p class="sub">Sign in to log and track your CE records</p>
+    <div class="field">
+      <label for="loginEmail">Email</label>
+      <input id="loginEmail" type="email" autocomplete="username" autocapitalize="none">
+    </div>
+    <div class="field">
+      <label for="loginPassword">Password</label>
+      <input id="loginPassword" type="password" autocomplete="current-password">
+    </div>
+    <button class="btn-primary" id="loginBtn">Sign In</button>
+    <div class="error-text" id="loginError"></div>
+  </div>
+</div>
+
+<div id="appScreen">
+  <header class="topbar">
+    <img class="logo" src="../assets/MedPro-logo.png" alt="MedPro Respiratory Care">
+    <div class="who">
+      <div>
+        <div class="name" id="whoName"></div>
+        <div class="role" id="whoPosition"></div>
+      </div>
+      <button class="btn-ghost" id="signOutBtn">Sign Out</button>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="records">My Records</button>
+    <button class="tab-btn" data-tab="add">Add Record</button>
+    <button class="tab-btn" data-tab="report">Report</button>
+  </nav>
+
+  <main>
+    <div class="tab-panel active" id="tab-records">
+      <h2>Your Continuing Education Records</h2>
+      <p class="lead">Everything you've logged, newest first.</p>
+      <div id="recordList"></div>
+    </div>
+
+    <div class="tab-panel" id="tab-add">
+      <h2>Add Education Record</h2>
+      <p class="lead">Submitting will notify your manager for signoff.</p>
+      <div class="form-card">
+        <div class="form-grid">
+          <div class="field full">
+            <label for="f_desc">Education Event Description</label>
+            <input id="f_desc" type="text" placeholder="e.g. Ventilator Management Workshop">
+          </div>
+          <div class="field">
+            <label for="f_location">Location of Event</label>
+            <input id="f_location" type="text">
+          </div>
+          <div class="field">
+            <label for="f_date">Date Attended</label>
+            <input id="f_date" type="date">
+          </div>
+          <div class="field">
+            <label for="f_role">Role</label>
+            <select id="f_role">
+              <option value="Attendee">Attendee</option>
+              <option value="Presenter">Presenter</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="f_hours">Hours Claimed</label>
+            <input id="f_hours" type="number" min="0" step="0.25">
+          </div>
+          <div class="field full">
+            <label for="f_remarks">Additional Remarks</label>
+            <textarea id="f_remarks" rows="3"></textarea>
+          </div>
+          <div class="field full">
+            <label for="f_file">Attach Document / Certificate (optional)</label>
+            <input id="f_file" type="file" accept=".pdf,.jpg,.jpeg,.png">
+          </div>
+        </div>
+        <button class="btn-primary auto" id="submitRecordBtn" style="margin-top:18px;">Submit Record</button>
+        <div class="form-msg" id="submitMsg"></div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-report">
+      <h2>My Report</h2>
+      <p class="lead">Records within a date range, by date attended.</p>
+      <div class="report-controls">
+        <div class="field">
+          <label for="r_from">From</label>
+          <input id="r_from" type="date">
+        </div>
+        <div class="field">
+          <label for="r_to">To</label>
+          <input id="r_to" type="date">
+        </div>
+        <button class="btn-ghost dark" id="runReportBtn">Run Report</button>
+      </div>
+      <div id="reportResults"></div>
+    </div>
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="../assets/medpro-pdf-report.js"></script>
+<script>
+  // Set this to your deployed Apps Script web app URL (Deploy > Manage deployments).
+  var CONFIG = {
+    API_URL: 'https://script.google.com/macros/s/AKfycbzaRQrIkyO_aY1urudYSUqsfDftL83Ktsx6-bqTt8xke2BNyNYUNC-3RwXWGcqg8yqm/exec'
+  };
+
+  var STORAGE_KEY = 'mp_ce_staff_session';
+  var state = { staff: null, records: [] };
+
+  function apiCall(action, payload) {
+    return fetch(CONFIG.API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: action, payload: payload || {} })
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (r) {
+        if (!r.ok) throw new Error(r.error || 'Request failed');
+        return r.data;
+      });
+  }
+
+  function escapeHtml(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  function formatDate(value) {
+    if (!value) return '—';
+    var datePart = String(value).slice(0, 10); // handles both "yyyy-MM-dd" and full ISO timestamps
+    var m = datePart.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return String(value);
+    return m[3] + '-' + MONTHS[parseInt(m[2], 10) - 1] + '-' + m[1];
+  }
+
+  function statusClass(status) {
+    return status === 'Signed' ? 'signed' : 'pending';
+  }
+
+  // ---- Login ----
+  document.getElementById('loginBtn').addEventListener('click', doLogin);
+  document.getElementById('loginPassword').addEventListener('keydown', function (e) { if (e.key === 'Enter') doLogin(); });
+
+  function doLogin() {
+    var email = document.getElementById('loginEmail').value.trim();
+    var password = document.getElementById('loginPassword').value;
+    var errEl = document.getElementById('loginError');
+    errEl.textContent = '';
+    if (!email || !password) { errEl.textContent = 'Enter your email and password.'; return; }
+
+    var btn = document.getElementById('loginBtn');
+    btn.disabled = true;
+    apiCall('staffLogin', { username: email, password: password })
+      .then(function (staff) {
+        if (!staff) { errEl.textContent = 'Incorrect email or password.'; btn.disabled = false; return; }
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(staff));
+        state.staff = staff;
+        showApp();
+      })
+      .catch(function (e) { errEl.textContent = e.message; btn.disabled = false; });
+  }
+
+  document.getElementById('signOutBtn').addEventListener('click', function () {
+    localStorage.removeItem(STORAGE_KEY);
+    state.staff = null;
+    document.getElementById('appScreen').style.display = 'none';
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('loginEmail').value = '';
+    document.getElementById('loginPassword').value = '';
+  });
+
+  function showApp() {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('appScreen').style.display = 'flex';
+    document.getElementById('whoName').textContent = state.staff.Name;
+    document.getElementById('whoPosition').textContent = state.staff.Position || '';
+    setDefaultReportDates();
+    loadRecords();
+  }
+
+  // ---- Tabs ----
+  document.querySelectorAll('.tab-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('active'); });
+      document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.remove('active'); });
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    });
+  });
+
+  // ---- My Records ----
+  function loadRecords() {
+    var list = document.getElementById('recordList');
+    list.innerHTML = '<div class="empty-state">Loading…</div>';
+    apiCall('getStaffRecords', { staffId: state.staff.StaffID })
+      .then(function (rows) {
+        state.records = rows;
+        renderRecords();
+      })
+      .catch(function (e) { list.innerHTML = '<div class="empty-state">' + escapeHtml(e.message) + '</div>'; });
+  }
+
+  function renderRecords() {
+    var list = document.getElementById('recordList');
+    if (state.records.length === 0) {
+      list.innerHTML = '<div class="empty-state">No education records logged yet. Use "Add Record" to log your first one.</div>';
+      return;
+    }
+    list.innerHTML = '';
+    state.records.forEach(function (r) {
+      var card = document.createElement('div');
+      card.className = 'record-card';
+      card.innerHTML =
+        '<div class="top-row">' +
+          '<h3>' + escapeHtml(r.EventDescription) + '</h3>' +
+          '<span class="pill ' + statusClass(r.Status) + '">' + escapeHtml(r.Status) + '</span>' +
+        '</div>' +
+        '<div class="meta">' +
+          '<span>' + formatDate(r.DateAttended) + '</span>' +
+          '<span>' + escapeHtml(r.Location || '—') + '</span>' +
+          '<span>' + escapeHtml(r.Role) + '</span>' +
+          '<span>' + (r.HoursClaimed || 0) + ' hrs</span>' +
+        '</div>' +
+        (r.AdditionalRemarks ? '<div class="remarks">' + escapeHtml(r.AdditionalRemarks) + '</div>' : '') +
+        (r.DocumentURL ? '<div style="margin-top:8px;"><a class="doc-link" href="' + escapeHtml(r.DocumentURL) + '" target="_blank" rel="noopener">View attached document &rarr;</a></div>' : '');
+      list.appendChild(card);
+    });
+  }
+
+  // ---- Add Record ----
+  function fileToBase64_(file) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function () {
+        var result = reader.result;
+        resolve(result.slice(result.indexOf(',') + 1));
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  document.getElementById('submitRecordBtn').addEventListener('click', function () {
+    var desc = document.getElementById('f_desc').value.trim();
+    var location = document.getElementById('f_location').value.trim();
+    var date = document.getElementById('f_date').value;
+    var role = document.getElementById('f_role').value;
+    var hours = document.getElementById('f_hours').value;
+    var remarks = document.getElementById('f_remarks').value.trim();
+    var fileInput = document.getElementById('f_file');
+    var msgEl = document.getElementById('submitMsg');
+    msgEl.textContent = '';
+    msgEl.className = 'form-msg';
+
+    if (!desc || !date || !hours) {
+      msgEl.textContent = 'Event description, date attended, and hours claimed are required.';
+      msgEl.className = 'form-msg error';
+      return;
+    }
+
+    var btn = document.getElementById('submitRecordBtn');
+    btn.disabled = true;
+    msgEl.textContent = 'Submitting…';
+
+    var record = {
+      EventDescription: desc,
+      Location: location,
+      DateAttended: date,
+      Role: role,
+      HoursClaimed: Number(hours),
+      AdditionalRemarks: remarks
+    };
+
+    var filePromise = (fileInput.files && fileInput.files[0])
+      ? fileToBase64_(fileInput.files[0]).then(function (b64) {
+          record.FileBase64 = b64;
+          record.FileName = fileInput.files[0].name;
+        })
+      : Promise.resolve();
+
+    filePromise
+      .then(function () { return apiCall('submitRecord', { staffId: state.staff.StaffID, record: record }); })
+      .then(function () {
+        msgEl.textContent = 'Record submitted — your manager has been notified for signoff.';
+        msgEl.className = 'form-msg success';
+        document.getElementById('f_desc').value = '';
+        document.getElementById('f_location').value = '';
+        document.getElementById('f_date').value = '';
+        document.getElementById('f_hours').value = '';
+        document.getElementById('f_remarks').value = '';
+        fileInput.value = '';
+        btn.disabled = false;
+        loadRecords();
+      })
+      .catch(function (e) {
+        msgEl.textContent = e.message;
+        msgEl.className = 'form-msg error';
+        btn.disabled = false;
+      });
+  });
+
+  // ---- Report ----
+  function setDefaultReportDates() {
+    var year = new Date().getFullYear();
+    document.getElementById('r_from').value = year + '-01-01';
+    document.getElementById('r_to').value = year + '-12-31';
+  }
+
+  document.getElementById('runReportBtn').addEventListener('click', function () {
+    var from = document.getElementById('r_from').value;
+    var to = document.getElementById('r_to').value;
+    var results = document.getElementById('reportResults');
+    if (!from || !to) { results.innerHTML = '<div class="empty-state">Choose both a From and To date.</div>'; return; }
+    results.innerHTML = '<div class="empty-state">Loading…</div>';
+
+    apiCall('getReport', { fromDate: from, toDate: to, staffId: state.staff.StaffID })
+      .then(function (report) { renderReport(report, from, to); })
+      .catch(function (e) { results.innerHTML = '<div class="empty-state">' + escapeHtml(e.message) + '</div>'; });
+  });
+
+  var lastReport = null;
+  function renderReport(report, from, to) {
+    lastReport = { report: report, from: from, to: to };
+    var results = document.getElementById('reportResults');
+    if (report.records.length === 0) {
+      results.innerHTML = '<div class="empty-state">No records in that date range.</div>';
+      return;
+    }
+    var rowsHtml = report.records.map(function (r) {
+      return '<tr>' +
+        '<td>' + formatDate(r.DateAttended) + '</td>' +
+        '<td>' + escapeHtml(r.EventDescription) + '</td>' +
+        '<td>' + escapeHtml(r.Location || '—') + '</td>' +
+        '<td>' + escapeHtml(r.Role) + '</td>' +
+        '<td>' + (r.HoursClaimed || 0) + '</td>' +
+        '<td>' + escapeHtml(r.Status) + '</td>' +
+        '</tr>';
+    }).join('');
+    results.innerHTML =
+      '<table class="report-table"><thead><tr>' +
+        '<th>Date</th><th>Event</th><th>Location</th><th>Role</th><th>Hours</th><th>Status</th>' +
+      '</tr></thead><tbody>' + rowsHtml + '</tbody></table>' +
+      '<div class="report-total">Total Hours: ' + report.totalHours.toFixed(2) + '</div>' +
+      '<div class="report-actions"><button class="btn-ghost dark" id="exportPdfBtn">Export PDF</button></div>';
+
+    document.getElementById('exportPdfBtn').addEventListener('click', function () {
+      exportCEReportPDF({
+        subtitle: 'Continuing Education Report',
+        personName: state.staff.Name,
+        personSub: state.staff.Position || '',
+        from: from,
+        to: to,
+        records: report.records,
+        totalHours: report.totalHours,
+        filename: 'CE-Report_' + state.staff.Name.replace(/\s+/g, '_') + '_' + from + '_to_' + to + '.pdf'
+      });
+    });
+  }
+
+  // ---- Boot ----
+  (function boot() {
+    var saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        state.staff = JSON.parse(saved);
+        showApp();
+      } catch (e) { localStorage.removeItem(STORAGE_KEY); }
+    }
+  })();
+</script>
+</body>
+</html>
