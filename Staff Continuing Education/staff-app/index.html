@@ -68,6 +68,8 @@
   .btn-primary:disabled { opacity: 0.5; cursor: default; }
   .btn-primary.auto { width: auto; padding: 10px 18px; margin-top: 0; }
   .error-text { color: #c0392b; font-size: 13px; margin-top: 14px; min-height: 18px; }
+  .admin-link { display: block; margin-top: 18px; font-size: 12px; color: var(--text-muted); text-decoration: none; }
+  .admin-link:hover { color: var(--navy); text-decoration: underline; }
 
   /* ---- App shell ---- */
   #appScreen { display: none; min-height: 100vh; flex-direction: column; }
@@ -158,6 +160,7 @@
     </div>
     <button class="btn-primary" id="loginBtn">Sign In</button>
     <div class="error-text" id="loginError"></div>
+    <a class="admin-link" href="../admin-app/">Admin sign in &rarr;</a>
   </div>
 </div>
 
