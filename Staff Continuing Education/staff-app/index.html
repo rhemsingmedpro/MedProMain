@@ -75,19 +75,17 @@
   #appScreen { display: none; min-height: 100vh; flex-direction: column; }
   header.topbar {
     display: flex; align-items: center; justify-content: space-between;
-    background: var(--navy); padding: 14px 24px;
+    background: #fff; border-bottom: 3px solid var(--green); padding: 14px 24px;
   }
   header.topbar img.logo { height: 34px; }
   .who { display: flex; align-items: center; gap: 14px; }
-  .who .name { font-size: 14px; font-weight: 600; color: #fff; }
-  .who .role { font-size: 12px; color: rgba(255,255,255,0.7); }
+  .who .name { font-size: 14px; font-weight: 600; color: var(--text); }
+  .who .role { font-size: 12px; color: var(--text-muted); }
   .btn-ghost {
-    background: transparent; border: 1px solid rgba(255,255,255,0.4); color: #fff;
+    background: transparent; border: 1px solid var(--border); color: var(--text);
     padding: 8px 14px; border-radius: 6px; font-size: 13px;
   }
-  .btn-ghost:hover { background: rgba(255,255,255,0.1); }
-  .btn-ghost.dark { border-color: var(--border); color: var(--text); }
-  .btn-ghost.dark:hover { background: var(--bg); }
+  .btn-ghost:hover { background: var(--bg); }
 
   nav.tabs {
     display: flex; gap: 4px; background: #fff; border-bottom: 1px solid var(--border);
@@ -131,6 +129,9 @@
   .form-msg { font-size: 13px; margin-top: 14px; min-height: 18px; }
   .form-msg.success { color: var(--green-dark); }
   .form-msg.error { color: #c0392b; }
+  .sig-pad-wrap { border: 1px solid var(--border); border-radius: 6px; background: #fff; touch-action: none; }
+  .sig-pad-wrap canvas { width: 100%; height: 160px; display: block; cursor: crosshair; border-radius: 6px; }
+  .sig-hint { font-size: 11px; color: var(--text-muted); margin: 6px 0 0; }
 
   /* ---- Report tab ---- */
   .report-controls { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
@@ -225,6 +226,12 @@
             <label for="f_file">Attach Document / Certificate (optional)</label>
             <input id="f_file" type="file" accept=".pdf,.jpg,.jpeg,.png">
           </div>
+          <div class="field full">
+            <label>Employee Signature</label>
+            <div class="sig-pad-wrap"><canvas id="f_signature" width="600" height="160"></canvas></div>
+            <p class="sig-hint">Sign with your mouse or finger. This will appear on your signed CE record.</p>
+            <button type="button" class="btn-ghost" id="clearSigBtn" style="margin-top:6px;">Clear Signature</button>
+          </div>
         </div>
         <button class="btn-primary auto" id="submitRecordBtn" style="margin-top:18px;">Submit Record</button>
         <div class="form-msg" id="submitMsg"></div>
@@ -243,7 +250,7 @@
           <label for="r_to">To</label>
           <input id="r_to" type="date">
         </div>
-        <button class="btn-ghost dark" id="runReportBtn">Run Report</button>
+        <button class="btn-ghost" id="runReportBtn">Run Report</button>
       </div>
       <div id="reportResults"></div>
     </div>
@@ -252,6 +259,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="../assets/signature-pad.js"></script>
 <script src="../assets/medpro-pdf-report.js"></script>
 <script>
   // Set this to your deployed Apps Script web app URL (Deploy > Manage deployments).
@@ -385,6 +393,9 @@
   }
 
   // ---- Add Record ----
+  var employeeSigPad = createSignaturePad(document.getElementById('f_signature'));
+  document.getElementById('clearSigBtn').addEventListener('click', function () { employeeSigPad.clear(); });
+
   function fileToBase64_(file) {
     return new Promise(function (resolve, reject) {
       var reader = new FileReader();
@@ -414,6 +425,11 @@
       msgEl.className = 'form-msg error';
       return;
     }
+    if (employeeSigPad.isEmpty()) {
+      msgEl.textContent = 'Please sign in the Employee Signature box before submitting.';
+      msgEl.className = 'form-msg error';
+      return;
+    }
 
     var btn = document.getElementById('submitRecordBtn');
     btn.disabled = true;
@@ -425,7 +441,8 @@
       DateAttended: date,
       Role: role,
       HoursClaimed: Number(hours),
-      AdditionalRemarks: remarks
+      AdditionalRemarks: remarks,
+      EmployeeSignature: employeeSigPad.toDataURL().split(',')[1]
     };
 
     var filePromise = (fileInput.files && fileInput.files[0])
@@ -446,6 +463,7 @@
         document.getElementById('f_hours').value = '';
         document.getElementById('f_remarks').value = '';
         fileInput.value = '';
+        employeeSigPad.clear();
         btn.disabled = false;
         loadRecords();
       })
@@ -498,7 +516,7 @@
         '<th>Date</th><th>Event</th><th>Location</th><th>Role</th><th>Hours</th><th>Status</th>' +
       '</tr></thead><tbody>' + rowsHtml + '</tbody></table>' +
       '<div class="report-total">Total Hours: ' + report.totalHours.toFixed(2) + '</div>' +
-      '<div class="report-actions"><button class="btn-ghost dark" id="exportPdfBtn">Export PDF</button></div>';
+      '<div class="report-actions"><button class="btn-ghost" id="exportPdfBtn">Export PDF</button></div>';
 
     document.getElementById('exportPdfBtn').addEventListener('click', function () {
       exportCEReportPDF({
