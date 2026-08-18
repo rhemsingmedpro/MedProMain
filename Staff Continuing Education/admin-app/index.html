@@ -47,14 +47,12 @@
 
   /* ---- Shell ---- */
   #appScreen { display: none; min-height: 100vh; flex-direction: column; }
-  header.topbar { display: flex; align-items: center; justify-content: space-between; background: var(--navy); padding: 14px 24px; }
+  header.topbar { display: flex; align-items: center; justify-content: space-between; background: #fff; border-bottom: 3px solid var(--green); padding: 14px 24px; }
   header.topbar img.logo { height: 34px; }
   .who { display: flex; align-items: center; gap: 14px; }
-  .who .name { font-size: 14px; font-weight: 600; color: #fff; }
+  .who .name { font-size: 14px; font-weight: 600; color: var(--text); }
   .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text); padding: 8px 14px; border-radius: 6px; font-size: 13px; }
   .btn-ghost:hover { background: var(--bg); }
-  .btn-ghost.on-dark { border-color: rgba(255,255,255,0.4); color: #fff; }
-  .btn-ghost.on-dark:hover { background: rgba(255,255,255,0.1); }
   .btn-danger { background: transparent; border: 1px solid #e6b8b0; color: var(--red); padding: 6px 10px; border-radius: 6px; font-size: 12px; }
   .btn-danger:hover { background: var(--red-bg); }
 
@@ -98,6 +96,11 @@
   /* ---- Report tab ---- */
   .report-total { margin: 14px 0; font-size: 14px; font-weight: 700; color: var(--navy); }
   .report-actions { margin-top: 16px; }
+
+  /* ---- Signature pad ---- */
+  .sig-pad-wrap { border: 1px solid var(--border); border-radius: 6px; background: #fff; touch-action: none; }
+  .sig-pad-wrap canvas { width: 100%; height: 160px; display: block; cursor: crosshair; border-radius: 6px; }
+  .sig-hint { font-size: 11px; color: var(--text-muted); margin: 6px 0 0; }
 </style>
 </head>
 <body>
@@ -119,7 +122,7 @@
     <img class="logo" src="../assets/MedPro-logo.png" alt="MedPro Respiratory Care">
     <div class="who">
       <div class="name" id="whoName"></div>
-      <button class="btn-ghost on-dark" id="signOutBtn">Sign Out</button>
+      <button class="btn-ghost" id="signOutBtn">Sign Out</button>
     </div>
   </header>
   <nav class="tabs">
@@ -175,6 +178,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="../assets/signature-pad.js"></script>
 <script src="../assets/medpro-pdf-report.js"></script>
 <script>
   // Set this to your deployed Apps Script web app URL (Deploy > Manage deployments).
@@ -327,16 +331,37 @@
         '</tr>';
     }).join('');
     body.querySelectorAll('[data-signoff]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        apiCall('signOffRecord', { recordId: btn.dataset.signoff, adminId: state.admin.AdminID })
-          .then(refreshAll).catch(function (e) { alert(e.message); });
-      });
+      btn.addEventListener('click', function () { openSignoffModal(btn.dataset.signoff); });
     });
     body.querySelectorAll('[data-delete]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         if (!confirm('Delete this CE record? This cannot be undone.')) return;
         apiCall('deleteRecord', { recordId: btn.dataset.delete }).then(refreshAll).catch(function (e) { alert(e.message); });
       });
+    });
+  }
+
+  function openSignoffModal(recordId) {
+    var record = state.records.find(function (r) { return r.RecordID === recordId; });
+    openModal('Sign Off' + (record ? ' — ' + record.EventDescription : ''),
+      '<p style="font-size:13px;color:var(--text-muted);margin-top:0;">' +
+        (record ? escapeHtml(record.StaffName) + ' — ' + formatDate(record.DateAttended) + ', ' + (record.HoursClaimed || 0) + ' hrs. ' : '') +
+        'Sign below to confirm this continuing education record.</p>' +
+      '<div class="sig-pad-wrap"><canvas id="soSignature" width="600" height="160"></canvas></div>' +
+      '<p class="sig-hint">Sign with your mouse or finger.</p>' +
+      '<button type="button" class="btn-ghost" id="soClearBtn" style="margin-top:8px;">Clear Signature</button>' +
+      '<div class="modal-error" id="soError"></div>',
+      '<button class="btn-ghost" onclick="closeModal()">Cancel</button><button class="btn-primary" id="soSubmit">Confirm Sign Off</button>'
+    );
+
+    var pad = createSignaturePad(document.getElementById('soSignature'));
+    document.getElementById('soClearBtn').addEventListener('click', function () { pad.clear(); });
+    document.getElementById('soSubmit').addEventListener('click', function () {
+      var errEl = document.getElementById('soError');
+      if (pad.isEmpty()) { errEl.textContent = 'Please sign before confirming.'; return; }
+      apiCall('signOffRecord', { recordId: recordId, adminId: state.admin.AdminID, managerSignature: pad.toDataURL().split(',')[1] })
+        .then(function () { closeModal(); refreshAll(); })
+        .catch(function (e) { errEl.textContent = e.message; });
     });
   }
 
