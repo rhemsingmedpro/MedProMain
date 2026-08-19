@@ -51,8 +51,10 @@
   header.topbar img.logo { height: 34px; }
   .who { display: flex; align-items: center; gap: 14px; }
   .who .name { font-size: 14px; font-weight: 600; color: var(--text); }
-  .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text); padding: 8px 14px; border-radius: 6px; font-size: 13px; }
+  .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text); padding: 8px 14px; border-radius: 6px; font-size: 13px; text-decoration: none; display: inline-block; }
   .btn-ghost:hover { background: var(--bg); }
+  .back-link { display: block; margin-top: 18px; font-size: 12px; color: var(--text-muted); text-decoration: none; }
+  .back-link:hover { color: var(--navy); text-decoration: underline; }
   .btn-danger { background: transparent; border: 1px solid #e6b8b0; color: var(--red); padding: 6px 10px; border-radius: 6px; font-size: 12px; }
   .btn-danger:hover { background: var(--red-bg); }
 
@@ -114,6 +116,7 @@
     <div class="field"><label for="adminPassword">Password</label><input id="adminPassword" type="password" autocomplete="current-password"></div>
     <button class="btn-primary" id="loginBtn">Sign In</button>
     <div class="error-text" id="loginError"></div>
+    <a class="back-link" href="../../">&larr; Back to Portal</a>
   </div>
 </div>
 
@@ -121,6 +124,7 @@
   <header class="topbar">
     <img class="logo" src="../assets/MedPro-logo.png" alt="MedPro Respiratory Care">
     <div class="who">
+      <a class="btn-ghost" href="../../">&larr; Portal</a>
       <div class="name" id="whoName"></div>
       <button class="btn-ghost" id="signOutBtn">Sign Out</button>
     </div>
