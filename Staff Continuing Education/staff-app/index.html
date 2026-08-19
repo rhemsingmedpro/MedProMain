@@ -259,6 +259,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 <script src="../assets/signature-pad.js"></script>
 <script src="../assets/medpro-pdf-report.js"></script>
 <script>
@@ -519,6 +520,10 @@
       '<div class="report-actions"><button class="btn-ghost" id="exportPdfBtn">Export PDF</button></div>';
 
     document.getElementById('exportPdfBtn').addEventListener('click', function () {
+      var btn = this;
+      var original = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = 'Generating…';
       exportCEReportPDF({
         subtitle: 'Continuing Education Report',
         personName: state.staff.Name,
@@ -528,7 +533,9 @@
         records: report.records,
         totalHours: report.totalHours,
         filename: 'CE-Report_' + state.staff.Name.replace(/\s+/g, '_') + '_' + from + '_to_' + to + '.pdf'
-      });
+      })
+        .catch(function (e) { alert('Could not generate the report: ' + e.message); })
+        .finally(function () { btn.disabled = false; btn.textContent = original; });
     });
   }
 
