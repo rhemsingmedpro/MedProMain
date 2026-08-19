@@ -758,6 +758,7 @@ const FORM_REGISTRY = [
       equipmentTable: {
       configUrl: "equipment-types.json",
       minRows: 8,
+      initialRows: 1,
       page: 0,
       region: { x: 36, yTop: 393, yBottom: 217, width: 540 },
       columns: [
@@ -773,6 +774,7 @@ const FORM_REGISTRY = [
     },
       oxygenTable: {
       minRows: 4,
+      initialRows: 1,
       page: 0,
       region: { x: 36, yTop: 509, yBottom: 429, width: 540 },
       columns: [
@@ -1543,8 +1545,13 @@ function addEquipmentRow(form, panel){
 }
 
 function seedEquipmentRows(form, panel){
-  const min = form.equipmentTable.minRows || 5;
-  for (let i=0; i<min; i++) addEquipmentRow(form, panel);
+  // initialRows (how many blank rows greet staff on open) is intentionally
+  // separate from minRows (the row count the static printed grid was built
+  // for, used only to keep PDF row heights aligned to those grid lines —
+  // see the nEffective calc below). Conflating the two reintroduces the
+  // equipment-table line-spacing bug from 2026-08-19.
+  const n = form.equipmentTable.initialRows ?? form.equipmentTable.minRows ?? 5;
+  for (let i=0; i<n; i++) addEquipmentRow(form, panel);
 }
 
 /* True if a row has anything worth printing — used both to skip blank seed
@@ -1630,8 +1637,10 @@ function addOxygenRow(form, panel){
 }
 
 function seedOxygenRows(form, panel){
-  const min = form.oxygenTable.minRows || 4;
-  for (let i=0; i<min; i++) addOxygenRow(form, panel);
+  // See the comment in seedEquipmentRows above — initialRows and minRows are
+  // deliberately separate knobs.
+  const n = form.oxygenTable.initialRows ?? form.oxygenTable.minRows ?? 4;
+  for (let i=0; i<n; i++) addOxygenRow(form, panel);
 }
 
 function composeOxygenRowCells(form, ot, rowEl){
