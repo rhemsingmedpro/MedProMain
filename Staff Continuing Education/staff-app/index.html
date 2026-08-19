@@ -70,6 +70,8 @@
   .error-text { color: #c0392b; font-size: 13px; margin-top: 14px; min-height: 18px; }
   .admin-link { display: block; margin-top: 18px; font-size: 12px; color: var(--text-muted); text-decoration: none; }
   .admin-link:hover { color: var(--navy); text-decoration: underline; }
+  .back-link { display: block; margin-top: 6px; font-size: 12px; color: var(--text-muted); text-decoration: none; }
+  .back-link:hover { color: var(--navy); text-decoration: underline; }
 
   /* ---- App shell ---- */
   #appScreen { display: none; min-height: 100vh; flex-direction: column; }
@@ -84,6 +86,7 @@
   .btn-ghost {
     background: transparent; border: 1px solid var(--border); color: var(--text);
     padding: 8px 14px; border-radius: 6px; font-size: 13px;
+    text-decoration: none; display: inline-block;
   }
   .btn-ghost:hover { background: var(--bg); }
 
@@ -162,6 +165,7 @@
     <button class="btn-primary" id="loginBtn">Sign In</button>
     <div class="error-text" id="loginError"></div>
     <a class="admin-link" href="../admin-app/">Admin sign in &rarr;</a>
+    <a class="back-link" href="../../">&larr; Back to Portal</a>
   </div>
 </div>
 
@@ -169,6 +173,7 @@
   <header class="topbar">
     <img class="logo" src="../assets/MedPro-logo.png" alt="MedPro Respiratory Care">
     <div class="who">
+      <a class="btn-ghost" href="../../">&larr; Portal</a>
       <div>
         <div class="name" id="whoName"></div>
         <div class="role" id="whoPosition"></div>
