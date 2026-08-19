@@ -5,14 +5,21 @@
  * blue-grey table header row.
  *
  * The exported PDF is a summary page (staff/period, the records table, total
- * hours) followed by one full detail page per record — reproducing that
- * submission's data plus the employee and manager signatures captured in
- * the app, the digital equivalent of the original paper form's two
- * signature lines. A record that hasn't been signed off yet shows a "Not
- * yet signed" placeholder instead of the manager signature.
+ * hours) followed by, for each record: one full detail page reproducing
+ * that submission's data plus the employee and manager signatures captured
+ * in the app (the digital equivalent of the original paper form's two
+ * signature lines — a record that hasn't been signed off yet shows a "Not
+ * yet signed" placeholder instead of the manager signature), and then, if
+ * the staff member attached a document/certificate, that file's own pages
+ * merged in immediately after.
  *
- * Requires jsPDF + jsPDF-AutoTable to already be loaded on the page (see the
- * <script> tags in each index.html) before this file runs.
+ * Requires jsPDF + jsPDF-AutoTable + pdf-lib to already be loaded on the
+ * page (see the <script> tags in each index.html) before this file runs.
+ * jsPDF builds the generated pages; pdf-lib is what actually merges in an
+ * *existing* PDF's pages (or an image, added as its own page) — jsPDF alone
+ * can only create new pages, not splice in another document's.
+ * exportCEReportPDF is async because embedding attachments means fetching
+ * each one first.
  *
  * opts:
  *   subtitle          e.g. "Continuing Education Report"
@@ -227,11 +234,59 @@ function drawPdfRecordDetailPage_(doc, pageWidth, pageHeight, r) {
   doc.text('Record ' + (r.RecordID || '') + '  ·  Generated ' + todayISO_local_(), margin, pageHeight - 24);
 }
 
-function exportCEReportPDF(opts) {
+/**
+ * Fetches an attached document and appends it into finalDoc (a pdf-lib
+ * PDFDocument being assembled): a PDF's pages are copied in as-is; an
+ * image (jpg/png) becomes one new page sized to fit a letter page,
+ * preserving its aspect ratio. Throws on any failure (missing file, fetch
+ * error, corrupt/encrypted PDF, unrecognized extension) — callers decide
+ * whether that should abort the whole report or just skip this one record.
+ */
+async function embedAttachment_(finalDoc, record) {
+  var res = await fetch(record.DocumentURL);
+  if (!res.ok) throw new Error('fetch failed (' + res.status + ')');
+  var bytes = await res.arrayBuffer();
+  var name = String(record.DocumentName || '').toLowerCase();
+
+  if (name.endsWith('.pdf')) {
+    var srcDoc = await PDFLib.PDFDocument.load(bytes, { ignoreEncryption: true });
+    var pages = await finalDoc.copyPages(srcDoc, srcDoc.getPageIndices());
+    pages.forEach(function (p) { finalDoc.addPage(p); });
+    return;
+  }
+
+  if (name.endsWith('.jpg') || name.endsWith('.jpeg') || name.endsWith('.png')) {
+    var img = name.endsWith('.png') ? await finalDoc.embedPng(bytes) : await finalDoc.embedJpg(bytes);
+    var pageW = 612, pageH = 792, margin = PDF_MARGIN;
+    var maxW = pageW - margin * 2, maxH = pageH - margin * 2;
+    var scale = Math.min(maxW / img.width, maxH / img.height, 1);
+    var w = img.width * scale, h = img.height * scale;
+    var page = finalDoc.addPage([pageW, pageH]);
+    page.drawImage(img, { x: (pageW - w) / 2, y: (pageH - h) / 2, width: w, height: h });
+    return;
+  }
+
+  throw new Error('unrecognized file type');
+}
+
+function downloadPdfBytes_(bytes, filename) {
+  var blob = new Blob([bytes], { type: 'application/pdf' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+}
+
+async function exportCEReportPDF(opts) {
   var jsPDF = window.jspdf.jsPDF;
   var doc = new jsPDF({ unit: 'pt', format: 'letter' });
   var pageWidth = doc.internal.pageSize.getWidth();
   var pageHeight = doc.internal.pageSize.getHeight();
+  var filename = opts.filename || 'CE-Report.pdf';
 
   drawPdfHeader_(doc, pageWidth, opts.subtitle || 'Continuing Education Report');
   drawPdfSummaryPage_(doc, pageWidth, opts);
@@ -242,7 +297,45 @@ function exportCEReportPDF(opts) {
     drawPdfRecordDetailPage_(doc, pageWidth, pageHeight, r);
   });
 
-  doc.save(opts.filename || 'CE-Report.pdf');
+  var hasAttachments = opts.records.some(function (r) { return !!r.DocumentURL; });
+  if (!hasAttachments) {
+    doc.save(filename);
+    return;
+  }
+
+  var failed = [];
+  try {
+    var shellDoc = await PDFLib.PDFDocument.load(doc.output('arraybuffer'));
+    var finalDoc = await PDFLib.PDFDocument.create();
+
+    var summaryPage = (await finalDoc.copyPages(shellDoc, [0]))[0];
+    finalDoc.addPage(summaryPage);
+
+    for (var i = 0; i < opts.records.length; i++) {
+      var r = opts.records[i];
+      var detailPage = (await finalDoc.copyPages(shellDoc, [i + 1]))[0];
+      finalDoc.addPage(detailPage);
+
+      if (r.DocumentURL) {
+        try {
+          await embedAttachment_(finalDoc, r);
+        } catch (e) {
+          failed.push(r.EventDescription || r.RecordID || ('record ' + (i + 1)));
+        }
+      }
+    }
+
+    downloadPdfBytes_(await finalDoc.save(), filename);
+  } catch (e) {
+    // Whole merge pipeline failed (e.g. pdf-lib didn't load) — still hand
+    // back the shell report rather than nothing.
+    doc.save(filename);
+    failed = ['could not attach any documents this run — exported without them'];
+  }
+
+  if (failed.length) {
+    alert('The report downloaded, but the attached document could not be embedded for: ' + failed.join(', '));
+  }
 }
 
 function todayISO_local_() {
