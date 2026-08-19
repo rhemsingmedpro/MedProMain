@@ -1,0 +1,139 @@
+{
+  "schema": "medpro-equipment-types/1",
+  "updatedAt": "2026-08-11T00:00:00Z",
+  "types": [
+    {
+      "id": "concentrator",
+      "label": "Concentrator",
+      "order": 1,
+      "fields": [
+        {
+          "key": "model",
+          "label": "Model",
+          "type": "lookup",
+          "required": true,
+          "order": 1,
+          "mapsTo": "none",
+          "options": ["Newlife", "QuietLife", "Intensity", "Platinum 5", "Platinum 10", "Everflo", "Everflo Q", "Millenium", "PerfectO2", "Visionaire", "Drive 5L", "Drive 10L", "Companion", "OxyHome", "Yuwell 5L", "Yuwell 10L"]
+        },
+        { "key": "sn", "label": "SN", "type": "text", "required": true, "order": 2, "mapsTo": "none" },
+        { "key": "hours", "label": "Hours", "type": "text", "required": true, "order": 3, "mapsTo": "none" },
+        { "key": "filterCheck", "label": "Filter Check", "type": "text", "required": true, "order": 4, "mapsTo": "none" },
+        { "key": "flowCheck", "label": "Flow Check in LPM", "type": "text", "required": true, "order": 5, "mapsTo": "none" },
+        { "key": "o2pct", "label": "O2%", "type": "text", "required": true, "order": 6, "mapsTo": "none" }
+      ]
+    },
+    {
+      "id": "poc",
+      "label": "POC",
+      "order": 2,
+      "fields": [
+        {
+          "key": "model",
+          "label": "Model",
+          "type": "lookup",
+          "required": true,
+          "order": 1,
+          "mapsTo": "none",
+          "options": ["Inogen G5", "OxyGoFit", "Sequal Eclipse", "OxyGo Next", "SimplyGo", "Inogen G4", "Inogen G3", "OxyGo", "Rove6", "iGo2"]
+        },
+        { "key": "sn", "label": "SN", "type": "text", "required": true, "order": 2, "mapsTo": "none" },
+        { "key": "filterCheck", "label": "Filter Check", "type": "text", "required": true, "order": 3, "mapsTo": "none" },
+        { "key": "hours", "label": "Hours", "type": "text", "required": true, "order": 4, "mapsTo": "none" },
+        { "key": "triggerCheck", "label": "Trigger Check", "type": "text", "required": true, "order": 5, "mapsTo": "none" }
+      ]
+    },
+    {
+      "id": "transfill",
+      "label": "Transfill",
+      "order": 3,
+      "fields": [
+        {
+          "key": "model",
+          "label": "Model",
+          "type": "lookup",
+          "required": true,
+          "order": 1,
+          "mapsTo": "none",
+          "options": ["HomeFill", "iFill", "UltraFill"]
+        },
+        { "key": "sn", "label": "SN", "type": "text", "required": true, "order": 2, "mapsTo": "none" },
+        { "key": "hours", "label": "Hours", "type": "text", "required": true, "order": 3, "mapsTo": "none" }
+      ]
+    },
+    {
+      "id": "transfill-cylinder",
+      "label": "Transfill Cylinder",
+      "order": 4,
+      "fields": [
+        {
+          "key": "model",
+          "label": "Model",
+          "type": "lookup",
+          "required": true,
+          "order": 1,
+          "mapsTo": "none",
+          "options": ["Homefill w OCD", "Homefill post", "iFill with OCD", "iFill with post", "iFill cont flow", "UltraFill"]
+        },
+        { "key": "sn", "label": "SN", "type": "text", "required": true, "order": 2, "mapsTo": "none" },
+        { "key": "size", "label": "Size", "type": "text", "required": true, "order": 3, "mapsTo": "none" }
+      ]
+    },
+    {
+      "id": "lox-reservoir",
+      "label": "LOX Reservoir",
+      "order": 5,
+      "fields": [
+        { "key": "model", "label": "Model", "type": "text", "required": true, "order": 1, "mapsTo": "none" },
+        { "key": "sn", "label": "SN", "type": "text", "required": true, "order": 2, "mapsTo": "none" }
+      ]
+    },
+    {
+      "id": "lox-portable",
+      "label": "LOX Portable",
+      "order": 6,
+      "fields": [
+        { "key": "model", "label": "Model", "type": "text", "required": true, "order": 1, "mapsTo": "none" },
+        { "key": "sn", "label": "SN", "type": "text", "required": true, "order": 2, "mapsTo": "none" }
+      ]
+    },
+    {
+      "id": "ocd",
+      "label": "OCD",
+      "order": 7,
+      "fields": [
+        {
+          "key": "model",
+          "label": "Model",
+          "type": "lookup",
+          "required": true,
+          "order": 1,
+          "mapsTo": "none",
+          "options": ["Impulse Elite", "Easy Pulse 5+6", "Drive PD1000", "Victor", "Bonsai"]
+        },
+        { "key": "sn", "label": "SN", "type": "text", "required": true, "order": 2, "mapsTo": "none" },
+        { "key": "batteryCheck", "label": "Battery Check", "type": "text", "required": true, "order": 3, "mapsTo": "none" },
+        { "key": "triggerCheck", "label": "Trigger Check", "type": "text", "required": true, "order": 4, "mapsTo": "none" }
+      ]
+    },
+    {
+      "id": "regulator",
+      "label": "Regulator",
+      "order": 8,
+      "fields": [
+        { "key": "model", "label": "Model", "type": "text", "required": true, "order": 1, "mapsTo": "none" },
+        { "key": "sn", "label": "SN", "type": "text", "required": false, "order": 2, "mapsTo": "none" }
+      ]
+    },
+    {
+      "id": "supplies",
+      "label": "Supplies",
+      "order": 9,
+      "fields": [
+        { "key": "partNumber", "label": "Part Number", "type": "text", "required": true, "order": 1, "mapsTo": "partNumber" },
+        { "key": "quantity", "label": "Quantity", "type": "text", "required": true, "order": 2, "mapsTo": "qtyDel" },
+        { "key": "description", "label": "Description", "type": "text", "required": true, "order": 3, "mapsTo": "description" }
+      ]
+    }
+  ]
+}
