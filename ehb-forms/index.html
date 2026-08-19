@@ -194,6 +194,12 @@
     font-size:12px;padding:8px 10px;border-radius:4px;margin-bottom:10px;
     background:#fbeae7;color:var(--danger);border:1px solid #f0c6bf;
   }
+  .money-field.money-invalid{
+    border-color:var(--danger);background:#fbeae7;
+  }
+  .money-warn{
+    font-size:.78em;color:var(--danger);margin-top:4px;
+  }
   .equip-row, .oxygen-row{
     border:1px solid var(--line2);border-radius:6px;padding:12px;margin-bottom:10px;background:var(--panel2);
   }
@@ -716,10 +722,10 @@ const FORM_REGISTRY = [
       { key: "field8", label: "PROV", drawOnly: true },
       { key: "field9", label: "POSTAL CODE", drawOnly: true },
       { key: "field38", label: "Notes", drawOnly: true, multiline: true, maxHeight: 30 },
-      { key: "field39", label: "SUBTOTAL", drawOnly: true },
-      { key: "field40", label: "GST", drawOnly: true },
-      { key: "field41", label: "PST", drawOnly: true },
-      { key: "field42", label: "TOTAL $", drawOnly: true },
+      { key: "field39", label: "SUBTOTAL", drawOnly: true, readonly: true },
+      { key: "field40", label: "GST", drawOnly: true, money: true },
+      { key: "field41", label: "PST", drawOnly: true, money: true },
+      { key: "field42", label: "TOTAL $", drawOnly: true, readonly: true },
       { key: "field10", label: "FUNDING SOURCE", drawOnly: true },
       { key: "field11", label: "PHN", drawOnly: true }
     ],
@@ -796,6 +802,7 @@ const FORM_REGISTRY = [
       minFontSize: 5.5
     },
       logo: { url: "MedPro-logo.png", page: 0, x: 36, y: 715.4761904761905, width: 130, height: 36.523809523809526 },
+      totals: { subtotalField: "field39", gstField: "field40", pstField: "field41", totalField: "field42" },
   },
   {
     id: "medproconsentform",
@@ -1500,7 +1507,8 @@ function renderEquipmentRowHtml(form, rowIdx, typeId){
     <div class="grid equip-extra-fields" id="equip-extra-${form.id}-${rowIdx}">${renderEquipmentExtraFieldsHtml(form, typeId)}</div>
     <div class="grid equip-standard-fields">
       ${EQUIP_STANDARD_COLUMNS.map(col=>`<div><label>${col.label}</label>
-        <input type="text" class="equip-std-input" data-std="${col.key}"></div>`).join('')}
+        <input type="text" class="equip-std-input${col.key==='unitCost' ? ' money-field' : ''}" data-std="${col.key}"${col.key==='extendedPrice' ? ' readonly' : ''}>
+        ${col.key==='unitCost' ? '<div class="money-warn" hidden>Doesn\'t look like a valid amount</div>' : ''}</div>`).join('')}
     </div>
   </div>`;
 }
@@ -1561,6 +1569,80 @@ function rowHasAnyValue(rowEl){
 }
 
 /* ---------------------------------------------------------------------
+   Delivery Note totals — Extended Price per row, and the form-level
+   SUBTOTAL/TOTAL $ that roll those up. Declarative via form.totals so this
+   isn't hardcoded to the Delivery Note specifically, matching the
+   equipmentTable/oxygenTable pattern. See UNSUPPORTED_KEYS in
+   form-builder.html — this key is hand-authored the same way.
+--------------------------------------------------------------------- */
+function parseMoney(str){
+  const cleaned = (str || '').replace(/[$,]/g, '').trim();
+  if (!cleaned) return NaN;
+  const n = parseFloat(cleaned);
+  return Number.isFinite(n) ? n : NaN;
+}
+
+/* Stricter than parseMoney on purpose: parseMoney/parseFloat happily reads
+   "5o" as 5, silently dropping the typo — fine for the calculation itself
+   (better a skipped line than a crash), but exactly the kind of mistake a
+   billing document needs to surface, not swallow. This requires the whole
+   (trimmed, $/,-stripped) string to be a clean number, not just start with
+   one. Blank counts as valid/neutral — nothing to warn about yet. */
+function isValidMoney(str){
+  const v = (str || '').trim();
+  if (!v) return true;
+  const cleaned = v.replace(/[$,]/g, '').trim();
+  return /^-?\d+(\.\d+)?$/.test(cleaned);
+}
+
+function validateMoneyField(el){
+  const valid = isValidMoney(el.value);
+  el.classList.toggle('money-invalid', !valid);
+  const warn = el.parentElement ? el.parentElement.querySelector('.money-warn') : null;
+  if (warn) warn.hidden = valid;
+}
+
+function recalcRowExtendedPrice(rowEl, qtyKey){
+  const qtyEl = rowEl.querySelector(`[data-std="${qtyKey}"]`);
+  const costEl = rowEl.querySelector('[data-std="unitCost"]');
+  const extEl = rowEl.querySelector('[data-std="extendedPrice"]');
+  if (!qtyEl || !costEl || !extEl) return;
+  const qty = parseMoney(qtyEl.value);
+  const cost = parseMoney(costEl.value);
+  extEl.value = (Number.isFinite(qty) && Number.isFinite(cost)) ? (qty * cost).toFixed(2) : '';
+}
+
+/* Sums a list of raw field strings, but returns null (leave the total blank)
+   rather than "0.00" when none of them have anything in them — an untouched
+   Delivery Note shouldn't print a $0.00 subtotal. */
+function sumIfAny(rawValues){
+  const nums = rawValues.map(parseMoney).filter(Number.isFinite);
+  if (!nums.length) return null;
+  return nums.reduce((a,b)=>a+b, 0);
+}
+
+function recalcDeliveryTotals(form, panel){
+  const t = form.totals;
+  if (!t) return;
+  panel.querySelectorAll('.equip-row').forEach(row => recalcRowExtendedPrice(row, 'qtyDel'));
+  panel.querySelectorAll('.oxygen-row').forEach(row => recalcRowExtendedPrice(row, 'delQty'));
+
+  const rowExtPrices = Array.from(panel.querySelectorAll('.equip-row [data-std="extendedPrice"], .oxygen-row [data-std="extendedPrice"]'))
+    .map(el => el.value);
+  const subtotal = sumIfAny(rowExtPrices);
+  const subtotalEl = document.getElementById(`f-${form.id}-${t.subtotalField}`);
+  if (subtotalEl) subtotalEl.value = subtotal === null ? '' : subtotal.toFixed(2);
+
+  const gstEl = document.getElementById(`f-${form.id}-${t.gstField}`);
+  const pstEl = document.getElementById(`f-${form.id}-${t.pstField}`);
+  const totalEl = document.getElementById(`f-${form.id}-${t.totalField}`);
+  if (totalEl){
+    const total = sumIfAny([subtotalEl ? subtotalEl.value : '', gstEl ? gstEl.value : '', pstEl ? pstEl.value : '']);
+    totalEl.value = total === null ? '' : total.toFixed(2);
+  }
+}
+
+/* ---------------------------------------------------------------------
    Oxygen table — a second repeatable-row table, structurally simpler than
    the equipment table above: every column is a direct 1:1 value (no
    type-specific extra fields composing into a shared Description cell).
@@ -1611,8 +1693,9 @@ function renderOxygenRowHtml(form, rowIdx){
         </div>
         <div class="scan-note" id="${batchId}-scannote" hidden></div>
       </div>
-      <div><label>Unit Cost</label><input type="text" class="oxygen-std-input" data-std="unitCost"></div>
-      <div><label>Extended Price</label><input type="text" class="oxygen-std-input" data-std="extendedPrice"></div>
+      <div><label>Unit Cost</label><input type="text" class="oxygen-std-input money-field" data-std="unitCost">
+        <div class="money-warn" hidden>Doesn't look like a valid amount</div></div>
+      <div><label>Extended Price</label><input type="text" class="oxygen-std-input" data-std="extendedPrice" readonly></div>
     </div>
   </div>`;
 }
@@ -1735,6 +1818,17 @@ function renderAccordion(){
       inp.addEventListener('input', ()=> updateState(form, trigger, panel));
       inp.addEventListener('change', ()=> updateState(form, trigger, panel));
     });
+
+    // Delegated (not per-input) so rows added later via "+ Add..." are
+    // covered automatically, same reasoning as the scan-button listener.
+    if (form.totals){
+      panel.addEventListener('input', ()=> recalcDeliveryTotals(form, panel));
+      recalcDeliveryTotals(form, panel);
+    }
+    panel.addEventListener('input', e=>{
+      if (e.target.classList && e.target.classList.contains('money-field')) validateMoneyField(e.target);
+    });
+
     updateState(form, trigger, panel);
   });
 }
@@ -1767,9 +1861,12 @@ function renderOwnFieldHtml(form, f){
     ? ` style="display:none;" data-cond-radio="${condGroup.radioKey}" data-cond-value="${condGroup.showValue}"`
     : '';
   const id = `f-${form.id}-${f.key}`;
+  const readonlyAttr = f.readonly ? ' readonly' : '';
+  const moneyClassAttr = f.money ? ' class="money-field"' : '';
   const input = f.multiline
-    ? `<textarea id="${id}" rows="4" placeholder="${f.placeholder||''}"></textarea>`
-    : `<input type="text" id="${id}" placeholder="${f.placeholder||''}"${inputModeAttr(f)}>`;
+    ? `<textarea id="${id}" rows="4" placeholder="${f.placeholder||''}"${readonlyAttr}></textarea>`
+    : `<input type="text" id="${id}"${moneyClassAttr} placeholder="${f.placeholder||''}"${inputModeAttr(f)}${readonlyAttr}>`;
+  const moneyWarn = (f.money && !f.readonly) ? `<div class="money-warn" hidden>Doesn't look like a valid amount</div>` : '';
 
   // A scannable field keeps its plain text input — scanning is an accelerator,
   // never the only way in, so a failed scan always degrades to typing.
@@ -1783,7 +1880,7 @@ function renderOwnFieldHtml(form, f){
   }
 
   return `<div${wrapAttrs}><label for="${id}">${f.label}</label>
-    ${input}</div>`;
+    ${input}${moneyWarn}</div>`;
 }
 function renderRadioGroupHtml(form, rg){
   let html = `<div style="margin-top:12px;"><label style="margin-bottom:6px;">${rg.label}</label><div class="radio-row">`;
@@ -2627,6 +2724,7 @@ document.addEventListener('click', e=>{
     if (form && panel){
       const trigger = panel.closest('.accordion-item').querySelector('.accordion-trigger');
       updateState(form, trigger, panel);
+      if (form.totals) recalcDeliveryTotals(form, panel);
     }
     return;
   }
@@ -2652,6 +2750,7 @@ document.addEventListener('click', e=>{
     if (form && panel){
       const trigger = panel.closest('.accordion-item').querySelector('.accordion-trigger');
       updateState(form, trigger, panel);
+      if (form.totals) recalcDeliveryTotals(form, panel);
     }
   }
 });
