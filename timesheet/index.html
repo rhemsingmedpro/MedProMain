@@ -27,11 +27,18 @@
     padding-bottom:48px;
   }
   header{
+    position:relative;
     background:linear-gradient(135deg,var(--navy) 0%,var(--navy-dark) 100%);
     color:#fff;
     padding:20px 18px 22px;
     border-bottom:4px solid var(--green);
   }
+  header .back-link{
+    position:absolute;top:16px;right:18px;
+    font-size:0.8rem;font-weight:600;color:#fff;text-decoration:none;
+    padding:4px 10px;border-radius:999px;background:rgba(255,255,255,0.15);
+  }
+  header .back-link:hover{background:rgba(255,255,255,0.25);}
   header .brand{
     font-size:22px;
     font-weight:800;
@@ -222,6 +229,7 @@
 <body>
 
 <header>
+  <a class="back-link" href="../">&larr; Back to Portal</a>
   <div class="brand">MedPro <span>Respiratory Care</span></div>
   <div class="sub">Employee Time Sheet — mobile submission</div>
 </header>
