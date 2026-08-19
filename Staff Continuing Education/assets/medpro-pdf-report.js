@@ -77,7 +77,10 @@ function drawPdfSummaryPage_(doc, pageWidth, opts) {
 
   labelValue(40, 'STAFF', opts.personName || 'All Staff');
   labelValue(320, 'PERIOD', opts.from + '  to  ' + opts.to);
-  if (opts.personSub) labelValue(40, 'POSITION', opts.personSub);
+  if (opts.personSub) {
+    y += 34;
+    labelValue(40, 'POSITION', opts.personSub);
+  }
 
   y += 40;
   doc.setDrawColor(225, 231, 238);
