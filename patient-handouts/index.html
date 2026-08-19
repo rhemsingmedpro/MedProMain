@@ -57,6 +57,11 @@ input,select,textarea{font-family:inherit;font-size:12px;}
   color:var(--dim);white-space:nowrap;border-left:1px solid var(--line);padding-left:12px;
 }
 .topbar .spacer{flex:1;min-width:0;}
+.back-link{
+  font-family:var(--sans);font-size:12px;font-weight:600;
+  color:var(--mp-blue);text-decoration:none;white-space:nowrap;
+}
+.back-link:hover{text-decoration:underline;}
 .chip{
   font-family:var(--mono);font-size:10px;color:var(--mp-blue);background:var(--mp-blue-light);
   border:1px solid #cbdbe9;border-radius:2px;padding:4px 8px;letter-spacing:.05em;
@@ -136,6 +141,7 @@ input,select,textarea{font-family:inherit;font-size:12px;}
     <span class="tag">When every breath matters.</span>
   </div>
   <div class="spacer"></div>
+  <a class="back-link" href="../">&larr; Back to Portal</a>
   <span class="chip" id="countChip">0 selected</span>
 </div>
 
