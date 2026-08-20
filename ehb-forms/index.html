@@ -847,26 +847,26 @@ const FORM_REGISTRY = [
     outputName: (p) => `${p.lastName || 'Patient'}_CREDITCARDAUTHORIZAT_${new Date().toISOString().slice(0,10)}.pdf`,
     profileFieldMap: {},
     ownFields: [
+      { key: "emailAddress", label: "Email Address to send receipt to:", drawOnly: true },
       { key: "cardholdername", label: "Cardholder Name", drawOnly: true },
-      { key: "emailAddress", label: "Email Address to send receipt to:", drawOnly: true, inputMode: "email" },
-      { key: "ccNumber", label: "Credit Card Number", drawOnly: true, inputMode: "numeric" },
-      { key: "field3", label: "Expiry Month", drawOnly: true, inputMode: "numeric" },
-      { key: "field4", label: "Expiry Year", drawOnly: true, inputMode: "numeric" },
-      { key: "Cvv", label: "CVV number", drawOnly: true, inputMode: "numeric" }
+      { key: "ccNumber", label: "Credit Card Number", drawOnly: true },
+      { key: "field3", label: "Expiry Month", drawOnly: true },
+      { key: "field4", label: "Expiry Year", drawOnly: true },
+      { key: "Cvv", label: "CVV number", drawOnly: true }
     ],
     ownDateFields: [],
     ownRadioGroups: [],
     ownCheckboxes: [
       { key: "field1", label: "Check box if not able to direct bill", drawOnly: true },
       { key: "field2", label: "Checkbox if able to direct bill", drawOnly: true },
-      { key: "field5", label: "Visa Card?", drawOnly: true },
+      { key: "field5", label: "Visa?", drawOnly: true },
       { key: "field6", label: "Mastercard?", drawOnly: true }
     ],
     drawFields: [
       { key: "field1", label: "Check box if not able to direct bill", source: "checkbox", page: 0, x: 36.6, y: 578.2, w: 7.2, h: 8, mark: "X" },
-      { key: "cardholdername", label: "Cardholder Name", source: "own", page: 0, x: 53.4, y: 579.4, size: 10, maxWidth: 171.2 },
+      { key: "fullName", label: "Full name — First Last", source: "computed", page: 0, x: 53.4, y: 579.4, size: 10, maxWidth: 171.2, recipe: "fullName" },
       { key: "field2", label: "Checkbox if able to direct bill", source: "checkbox", page: 0, x: 38.2, y: 467.8, w: 14, h: 12, mark: "X" },
-      { key: "cardholdername", label: "Cardholder Name", source: "own", page: 0, x: 57.4, y: 469, size: 10, maxWidth: 168.8 },
+      { key: "fullName", label: "Full name — First Last", source: "computed", page: 0, x: 57.4, y: 469, size: 10, maxWidth: 168.8, recipe: "fullName" },
       { key: "fullName", label: "Full name — First Last", source: "computed", page: 0, x: 98.2, y: 346.6, size: 10, maxWidth: 260.8, recipe: "fullName" },
       { key: "phone", label: "phone", source: "profile", page: 0, x: 409.4, y: 346.6, size: 10, maxWidth: 115.2, profileKey: "phone" },
       { key: "emailAddress", label: "Email Address to send receipt to:", source: "own", page: 0, x: 69.4, y: 319.4, size: 10, maxWidth: 303.2 },
@@ -876,8 +876,8 @@ const FORM_REGISTRY = [
       { key: "field4", label: "Expiry Year", source: "own", page: 0, x: 416.6, y: 236.2, size: 10, maxWidth: 29.6 },
       { key: "Cvv", label: "CVV number", source: "own", page: 0, x: 474.2, y: 237.8, size: 10, maxWidth: 50.4 },
       { key: "today", label: "Today's date", source: "today", page: 0, x: 335.8, y: 142.6, size: 10, maxWidth: 120, format: "mm-dd-yyyy" },
-      { key: "field5", label: "Visa Card?", source: "checkbox", page: 0, x: 121.4, y: 291, w: 8.8, h: 6.4, mark: "X" },
-      { key: "field6", label: "Mastercard?", source: "checkbox", page: 0, x: 154.8, y: 291.8, w: 7.2, h: 4.8, mark: "X" }
+      { key: "field5", label: "Visa?", source: "checkbox", page: 0, x: 122.2, y: 290.7, w: 8, h: 8.8, mark: "X" },
+      { key: "field6", label: "Mastercard?", source: "checkbox", page: 0, x: 155.8, y: 290.7, w: 8, h: 7.2, mark: "X" }
     ],
     extraSignaturePads: [
       { key: "signer1", label: "Signature" }
