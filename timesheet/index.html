@@ -27,18 +27,11 @@
     padding-bottom:48px;
   }
   header{
-    position:relative;
     background:linear-gradient(135deg,var(--navy) 0%,var(--navy-dark) 100%);
     color:#fff;
     padding:20px 18px 22px;
     border-bottom:4px solid var(--green);
   }
-  header .back-link{
-    position:absolute;top:16px;right:18px;
-    font-size:0.8rem;font-weight:600;color:#fff;text-decoration:none;
-    padding:4px 10px;border-radius:999px;background:rgba(255,255,255,0.15);
-  }
-  header .back-link:hover{background:rgba(255,255,255,0.25);}
   header .brand{
     font-size:22px;
     font-weight:800;
@@ -134,6 +127,17 @@
     display:none;
   }
   .day-card .ot-flag.show{display:inline-block;}
+  .day-card .dot-flag{
+    font-size:11px;
+    font-weight:700;
+    color:#fff;
+    background:#7a2e8f;
+    padding:2px 8px;
+    border-radius:20px;
+    display:none;
+    margin-left:6px;
+  }
+  .day-card .dot-flag.show{display:inline-block;}
   .day-card .off-flag{
     font-size:11px;
     font-weight:700;
@@ -161,6 +165,13 @@
   .summary-grid.three-col{
     grid-template-columns:1fr 1fr 1fr;
   }
+  .summary-grid.four-col{
+    grid-template-columns:1fr 1fr 1fr 1fr;
+    gap:6px;
+  }
+  .summary-grid.four-col .stat{padding:8px 6px;}
+  .summary-grid.four-col .stat .num{font-size:16px;}
+  .summary-grid.four-col .stat .lbl{font-size:9.5px;}
   .stat{
     background:var(--bg);
     border-radius:8px;
@@ -169,6 +180,7 @@
   }
   .stat .num{font-size:20px;font-weight:800;color:var(--navy);}
   .stat.alert .num{color:var(--danger);}
+  .stat.alert-strong .num{color:#7a2e8f;}
   .stat .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;margin-top:2px;}
   input:disabled{
     background:#eef1f4;
@@ -229,7 +241,6 @@
 <body>
 
 <header>
-  <a class="back-link" href="../">&larr; Back to Portal</a>
   <div class="brand">MedPro <span>Respiratory Care</span></div>
   <div class="sub">Employee Time Sheet — mobile submission</div>
 </header>
@@ -290,10 +301,11 @@
     <div class="hint">Enter total hours worked each day. Scheduled day is 7.5 hrs. Overtime is calculated automatically for any hours over 8 in a day, or over 40 regular hours for the week.</div>
     <div id="daysContainer"></div>
 
-    <div class="summary-grid three-col" style="margin-top:4px;">
+    <div class="summary-grid four-col" style="margin-top:4px;">
       <div class="stat"><div class="num" id="totalHoursOut">0.0</div><div class="lbl">Total Hours</div></div>
       <div class="stat"><div class="num" id="totalRegOut">0.0</div><div class="lbl">Total Regular</div></div>
-      <div class="stat alert"><div class="num" id="totalOTOut">0.0</div><div class="lbl">Total OT Hours</div></div>
+      <div class="stat alert"><div class="num" id="totalOTOut">0.0</div><div class="lbl">Total OT</div></div>
+      <div class="stat alert-strong"><div class="num" id="totalDoubleOTOut">0.0</div><div class="lbl">Total 2X OT</div></div>
     </div>
   </div>
 
@@ -323,24 +335,18 @@
 
   <div class="card">
     <h2>Mileage Sheet</h2>
-    <div class="checkrow">
-      <input type="checkbox" id="showMileage">
-      <span>Include Mileage Sheet</span>
-    </div>
-    <div id="mileageBody" style="display:none;">
-      <div class="hint">Optional — fill in only for days with business travel.</div>
-      <div id="mileageContainer"></div>
+    <div class="hint">Optional — fill in only for days with business travel.</div>
+    <div id="mileageContainer"></div>
 
-      <div class="summary-grid">
-        <div class="stat"><div class="num" id="mBusOut">0</div><div class="lbl">Total Business KM</div></div>
-        <div class="stat"><div class="num" id="mPerOut">0</div><div class="lbl">Total Personal KM</div></div>
-      </div>
-      <div class="summary-grid" style="margin-top:10px;">
-        <div class="stat"><div class="num" id="mWeekOut">0</div><div class="lbl">Total Week KM</div></div>
-        <div class="stat">
-          <input type="number" step="1" id="yearTotalKm" placeholder="0" style="text-align:center;font-weight:800;color:var(--navy);margin-bottom:0;border:none;background:transparent;padding:0;">
-          <div class="lbl">Year Total KM (optional)</div>
-        </div>
+    <div class="summary-grid">
+      <div class="stat"><div class="num" id="mBusOut">0</div><div class="lbl">Total Business KM</div></div>
+      <div class="stat"><div class="num" id="mPerOut">0</div><div class="lbl">Total Personal KM</div></div>
+    </div>
+    <div class="summary-grid" style="margin-top:10px;">
+      <div class="stat"><div class="num" id="mWeekOut">0</div><div class="lbl">Total Week KM</div></div>
+      <div class="stat">
+        <input type="number" step="1" id="yearTotalKm" placeholder="0" style="text-align:center;font-weight:800;color:var(--navy);margin-bottom:0;border:none;background:transparent;padding:0;">
+        <div class="lbl">Year Total KM (optional)</div>
       </div>
     </div>
   </div>
@@ -375,25 +381,18 @@
 const DAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const STANDARD_DAY = 7.5;
 const DAILY_OT_THRESHOLD = 8;
+const DOUBLE_OT_THRESHOLD = 12;
 const WEEKLY_REGULAR_CAP = 40;
 
-// Each day's "committed" regular hours are frozen once computed, and only
-// recomputed when that specific day's hours are edited — checked against the
-// current (frozen) regular hours of every OTHER day. This way, editing one
-// day's hours attributes any resulting weekly overage to that day alone,
-// without silently changing the displayed split on a different, untouched day.
-let committedReg = new Array(7).fill(0);
-let lastEditedDay = null;
-// Order in which days have been edited (most recent last) — used only to decide
-// which day gets weekly-OT capacity given BACK first if the true weekly excess
-// shrinks (e.g. another day's hours are reduced, freeing up room).
-let editHistory = [0,1,2,3,4,5,6];
-function touchDay(i){
-  lastEditedDay = i;
-  const idx = editHistory.indexOf(i);
-  if(idx > -1) editHistory.splice(idx, 1);
-  editHistory.push(i);
-}
+// Each regular scheduled day guarantees at least STANDARD_DAY (7.5) hours as
+// regular time — that baseline is never eroded by the weekly 40-hour cap.
+// Only the small "flex" sliver between 7.5 and the 8-hour daily cap (and all
+// of an off day's hours, which have no guaranteed floor) competes for the
+// remaining weekly budget. That budget is allocated in calendar order —
+// Sunday through Saturday — so whichever day comes earlier in the week
+// claims it first; later days absorb whatever's left as OT. This is
+// recomputed fresh from scratch every time, so there's no "memory" of
+// which day was edited when, and no risk of a stale/leftover allocation.
 
 const daysContainer = document.getElementById('daysContainer');
 const mileageContainer = document.getElementById('mileageContainer');
@@ -403,35 +402,39 @@ DAYS.forEach((day, i) => {
   card.className = 'day-card';
   card.innerHTML = `
     <div class="day-title">
-      <span id="dayLabel${i}">${day}</span>
-      <span><span class="off-flag" id="offFlag${i}">Day Off</span><span class="ot-flag" id="otFlag${i}">OT</span></span>
+      <span>${day}</span>
+      <span><span class="off-flag" id="offFlag${i}">Day Off</span><span class="ot-flag" id="otFlag${i}">OT</span><span class="dot-flag" id="dotFlag${i}">2X OT</span></span>
     </div>
+    <label>Hours Worked</label>
+    <input type="number" step="0.25" min="0" max="24" placeholder="${STANDARD_DAY}" id="hours${i}">
     <div class="row3">
       <div>
-        <label>Hours Worked</label>
-        <input type="number" step="0.25" min="0" max="24" placeholder="${STANDARD_DAY}" id="hours${i}">
-      </div>
-      <div>
-        <label>Regular Hours</label>
+        <label>Regular</label>
         <input type="number" id="reg${i}" class="readonly" readonly>
       </div>
       <div>
-        <label>OT Hours</label>
+        <label>OT</label>
         <input type="number" id="ot${i}" class="readonly" readonly>
+      </div>
+      <div>
+        <label>Double OT</label>
+        <input type="number" id="dot${i}" class="readonly" readonly>
       </div>
     </div>
     <label>Reason for OT / Client Seen</label>
     <textarea rows="2" id="reason${i}" placeholder="Optional"></textarea>
   `;
   daysContainer.appendChild(card);
-  // Registered here (before the generic bulk listener further down) so this
-  // fires first on every keystroke, keeping lastEditedDay current before recalc() runs.
-  document.getElementById('hours'+i).addEventListener('input', () => touchDay(i));
+  document.getElementById('hours'+i).addEventListener('input', recalc);
 
   const mCard = document.createElement('div');
   mCard.className = 'day-card';
   mCard.innerHTML = `
-    <div class="day-title"><span id="mDayLabel${i}">${day}</span></div>
+    <div class="day-title"><span>${day}</span></div>
+    <div class="row2">
+      <div><label>Start Time</label><input type="time" id="mStart${i}"></div>
+      <div><label>End Time</label><input type="time" id="mEnd${i}"></div>
+    </div>
     <div class="row2">
       <div><label>Business KM</label><input type="number" step="1" min="0" id="mBus${i}" placeholder="0"></div>
       <div><label>Personal KM</label><input type="number" step="1" min="0" id="mPer${i}" placeholder="0"></div>
@@ -458,29 +461,6 @@ function friendlyDate(dateStr){
   const d = new Date(dateStr+'T00:00:00');
   return d.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', year:'numeric' });
 }
-function dayLabelText(dayName, dateStr){
-  const d = new Date(dateStr+'T00:00:00');
-  const dayNum = d.getDate();
-  const month = d.toLocaleDateString('en-US', { month:'short' });
-  const year = d.getFullYear();
-  return `${dayName}  ${dayNum} ${month} ${year}`;
-}
-function updateDayLabels(){
-  const ws = weekStartEl.value;
-  for(let i=0;i<7;i++){
-    const label = document.getElementById('dayLabel'+i);
-    const mLabel = document.getElementById('mDayLabel'+i);
-    const text = ws ? dayLabelText(DAYS[i], addDays(ws, i)) : DAYS[i];
-    if(label) label.textContent = text;
-    if(mLabel) mLabel.textContent = text;
-  }
-}
-
-const showMileageEl = document.getElementById('showMileage');
-const mileageBodyEl = document.getElementById('mileageBody');
-showMileageEl.addEventListener('change', () => {
-  mileageBodyEl.style.display = showMileageEl.checked ? '' : 'none';
-});
 
 const weekStartEl = document.getElementById('weekStart');
 const weekEndEl = document.getElementById('weekEnd');
@@ -501,7 +481,6 @@ weekStartEl.addEventListener('change', () => {
       : `Week starts ${friendlyDate(corrected)}.`;
     weekStartConfirm.classList.toggle('adjusted', wasAdjusted);
     weekStartConfirm.classList.add('show');
-    updateDayLabels();
   }, 0);
 });
 
@@ -520,8 +499,16 @@ function updateOnCallEnabled(){
     onCallStartConfirm.classList.remove('show');
   }
 }
-onCallStandardEl.addEventListener('change', updateOnCallEnabled);
-onCallStatEl.addEventListener('change', updateOnCallEnabled);
+// Behaves like a radio button (only one can be selected) but each box can
+// still be clicked again to deselect it, unlike a true radio input.
+onCallStandardEl.addEventListener('change', () => {
+  if(onCallStandardEl.checked) onCallStatEl.checked = false;
+  updateOnCallEnabled();
+});
+onCallStatEl.addEventListener('change', () => {
+  if(onCallStatEl.checked) onCallStandardEl.checked = false;
+  updateOnCallEnabled();
+});
 updateOnCallEnabled();
 
 onCallStartEl.addEventListener('change', () => {
@@ -561,7 +548,6 @@ function updateOffDays(){
       hoursInput.placeholder = '0';
       hoursInput.value = '';
     }
-    resetCommittedReg();
     recalc();
     return;
   }
@@ -584,90 +570,65 @@ function updateOffDays(){
       hoursInput.value = STANDARD_DAY;
     }
   }
-  resetCommittedReg();
   recalc();
-}
-// A schedule change resets every day's committed regular hours back to a
-// neutral baseline (each day capped at its own daily 8-hour limit, with no
-// weekly-cap adjustment yet) since it isn't a specific day being edited.
-function resetCommittedReg(){
-  for(let i=0;i<7;i++){
-    const h = num(document.getElementById('hours'+i).value);
-    committedReg[i] = Math.min(h, DAILY_OT_THRESHOLD);
-  }
-  lastEditedDay = null;
-  editHistory = [0,1,2,3,4,5,6];
 }
 document.getElementById('workWeek').addEventListener('change', updateOffDays);
 updateOffDays();
 
 function recalc(){
-  // If a specific day's hours were just edited, recompute ONLY that day's
-  // committed regular hours, checked against the current (frozen) regular
-  // hours already committed for every other day.
-  if(lastEditedDay !== null){
-    const i = lastEditedDay;
-    const h = num(document.getElementById('hours'+i).value);
-    const dailyCapped = Math.min(h, DAILY_OT_THRESHOLD);
-    let othersSum = 0;
-    for(let j=0;j<7;j++){ if(j!==i) othersSum += committedReg[j]; }
-    const remainingCapacity = Math.max(0, WEEKLY_REGULAR_CAP - othersSum);
-    committedReg[i] = Math.min(dailyCapped, remainingCapacity);
-    lastEditedDay = null;
-  }
-
-  // Giveback correction: if reducing hours on some OTHER day freed up weekly
-  // capacity (the true achievable regular total is now higher than what's
-  // currently committed), return that freed capacity to whichever day(s)
-  // currently hold weekly-attributed OT — most-recently-edited first.
-  let dailyCappedArr = [];
+  // Compute each day's guaranteed floor and flex need fresh, every time —
+  // these depend only on that day's own current hours and schedule role,
+  // never on history. Off days (and every day in Hourly mode) have no floor.
+  const mode = document.getElementById('workWeek').value;
+  const regularDaySet = mode === 'hourly' ? [] : WORK_WEEKS[mode];
+  let floors = [], caps = [], flexNeeds = [];
   for(let i=0;i<7;i++){
     const h = num(document.getElementById('hours'+i).value);
-    dailyCappedArr.push(Math.min(h, DAILY_OT_THRESHOLD));
+    const cap = Math.min(h, DAILY_OT_THRESHOLD);
+    const floor = regularDaySet.includes(i) ? Math.min(h, STANDARD_DAY) : 0;
+    floors.push(floor);
+    caps.push(cap);
+    flexNeeds.push(cap - floor);
   }
-  const trueTotal = Math.min(dailyCappedArr.reduce((a,b)=>a+b,0), WEEKLY_REGULAR_CAP);
-  const currentTotal = committedReg.reduce((a,b)=>a+b,0);
-  let giveback = trueTotal - currentTotal;
-  if(giveback > 0){
-    for(let idx=editHistory.length-1; idx>=0 && giveback>0; idx--){
-      const day = editHistory[idx];
-      const room = dailyCappedArr[day] - committedReg[day];
-      if(room > 0){
-        const give = Math.min(room, giveback);
-        committedReg[day] += give;
-        giveback -= give;
-      }
-    }
-    // Safety net: mop up any remainder against any day still holding room,
-    // in case a day wasn't yet part of editHistory.
-    for(let day=0; day<7 && giveback>0; day++){
-      const room = dailyCappedArr[day] - committedReg[day];
-      if(room > 0){
-        const give = Math.min(room, giveback);
-        committedReg[day] += give;
-        giveback -= give;
-      }
-    }
+  const totalGuaranteedFloor = floors.reduce((a,b)=>a+b,0);
+  let remainingBudget = Math.max(0, WEEKLY_REGULAR_CAP - totalGuaranteedFloor);
+
+  // Allocate the remaining weekly budget in calendar order — Sunday (index 0)
+  // through Saturday (index 6) — so whichever day comes earlier in the week
+  // claims it first; later days absorb whatever's left as OT. Recomputed
+  // fresh from the current hours every time, so there's nothing to get stale.
+  let flexGranted = [];
+  for(let i=0;i<7;i++){
+    const grant = Math.min(flexNeeds[i], remainingBudget);
+    flexGranted.push(grant);
+    remainingBudget -= grant;
   }
 
   let totalHours = 0;
   let totalOT = 0;
+  let totalDoubleOT = 0;
   for(let i=0;i<7;i++){
     const h = num(document.getElementById('hours'+i).value);
     totalHours += h;
-    const reg = committedReg[i];
-    const ot = h - reg;
+    const reg = floors[i] + flexGranted[i];
+    const doubleOT = Math.max(h - DOUBLE_OT_THRESHOLD, 0);
+    const ot = h - reg - doubleOT;
     totalOT += ot;
+    totalDoubleOT += doubleOT;
 
     document.getElementById('ot'+i).value = ot > 0 ? ot.toFixed(2) : (h>0 ? '0.00' : '');
+    document.getElementById('dot'+i).value = doubleOT > 0 ? doubleOT.toFixed(2) : (h>0 ? '0.00' : '');
     document.getElementById('reg'+i).value = h > 0 ? reg.toFixed(2) : '';
     const flag = document.getElementById('otFlag'+i);
     if(ot > 0) flag.classList.add('show'); else flag.classList.remove('show');
+    const dotFlag = document.getElementById('dotFlag'+i);
+    if(doubleOT > 0) dotFlag.classList.add('show'); else dotFlag.classList.remove('show');
   }
 
   document.getElementById('totalHoursOut').textContent = totalHours.toFixed(2);
-  document.getElementById('totalRegOut').textContent = (totalHours - totalOT).toFixed(2);
+  document.getElementById('totalRegOut').textContent = (totalHours - totalOT - totalDoubleOT).toFixed(2);
   document.getElementById('totalOTOut').textContent = totalOT.toFixed(2);
+  document.getElementById('totalDoubleOTOut').textContent = totalDoubleOT.toFixed(2);
   document.getElementById('otWorked').value = totalOT.toFixed(2);
 
   const rolled = num(document.getElementById('otRolled').value);
@@ -756,16 +717,16 @@ function buildTimesheetPDF(data){
 
   if(data.onCallStandard || data.onCallStat){
     const kind = data.onCallStandard ? 'Standard' : 'Stat';
-    // Highlighted box behind the on-call info to make it stand out on the PDF
-    doc.setFillColor(238,248,236);
-    doc.setDrawColor(76,170,63);
-    doc.setLineWidth(1);
-    doc.roundedRect(marginX-6, y-16, usableWidth+12, 34, 4, 4, 'FD');
-    doc.setLineWidth(0.5);
-
-    label('On-Call Week', marginX, y);
-    value(`${kind}: ${data.onCallStart || '—'} to ${data.onCallEnd || '—'}`, marginX, y);
-    y += 34;
+    // Highlighted banner so on-call status is impossible to miss on the page.
+    doc.setFillColor(255, 244, 214);
+    doc.setDrawColor(230, 168, 55);
+    doc.roundedRect(marginX, y-14, usableWidth, 26, 3, 3, 'FD');
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(11);
+    doc.setTextColor(150, 95, 10);
+    doc.text(`ON-CALL WEEK — ${kind.toUpperCase()}: ${data.onCallStart || '—'} to ${data.onCallEnd || '—'}`, marginX+8, y+2);
+    doc.setTextColor(28,39,51);
+    y += 30;
   }
 
   y += 6;
@@ -786,18 +747,19 @@ function buildTimesheetPDF(data){
   }
 
   const dayCols = [
-    {title:'DAY', width:65},
-    {title:'HOURS', width:55},
-    {title:'REGULAR', width:60},
-    {title:'OT', width:45},
-    {title:'REASON / CLIENT SEEN', width:usableWidth-65-55-60-45}
+    {title:'DAY', width:60},
+    {title:'HOURS', width:48},
+    {title:'REG', width:45},
+    {title:'OT', width:38},
+    {title:'2X OT', width:42},
+    {title:'REASON / CLIENT SEEN', width:usableWidth-60-48-45-38-42}
   ];
   y = drawTableHeader(dayCols, y);
 
   doc.setFont('helvetica','normal');
   doc.setFontSize(9.5);
   data.days.forEach(d=>{
-    const reasonLines = doc.splitTextToSize(d.reason || '', dayCols[4].width-6);
+    const reasonLines = doc.splitTextToSize(d.reason || '', dayCols[5].width-6);
     const rowH = Math.max(16, 12*reasonLines.length + 4);
     let cx = marginX+4;
     doc.setTextColor(28,39,51);
@@ -808,6 +770,10 @@ function buildTimesheetPDF(data){
     doc.text(d.ot, cx, y);
     doc.setFont('helvetica','normal'); doc.setTextColor(28,39,51);
     cx += dayCols[3].width;
+    if(parseFloat(d.doubleOT) > 0){ doc.setTextColor(122,46,143); doc.setFont('helvetica','bold'); }
+    doc.text(d.doubleOT, cx, y);
+    doc.setFont('helvetica','normal'); doc.setTextColor(28,39,51);
+    cx += dayCols[4].width;
     doc.text(reasonLines, cx, y);
     y += rowH;
     doc.setDrawColor(238,241,244);
@@ -818,11 +784,25 @@ function buildTimesheetPDF(data){
   doc.setFont('helvetica','bold');
   doc.setFontSize(10);
   doc.text(`Total Hours: ${data.totalHours}`, marginX, y);
-  doc.text(`Total Regular: ${data.totalRegular}`, 170, y);
+  doc.text(`Total Regular: ${data.totalRegular}`, 165, y);
   doc.setTextColor(192,57,43);
-  doc.text(`Total OT Hours: ${data.totalOT}`, 320, y);
+  doc.text(`Total OT: ${data.totalOT}`, 300, y);
   doc.setTextColor(28,39,51);
-  y += 26;
+  y += 22;
+
+  const totalDoubleOTNum = parseFloat(data.totalDoubleOT) || 0;
+  if(totalDoubleOTNum > 0){
+    // Highlighted banner for Double OT so it's never mistaken for regular OT.
+    doc.setFillColor(243, 230, 250);
+    doc.setDrawColor(122, 46, 143);
+    doc.roundedRect(marginX, y-13, usableWidth, 22, 3, 3, 'FD');
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(11);
+    doc.setTextColor(90, 30, 110);
+    doc.text(`DOUBLE OVERTIME (over ${DOUBLE_OT_THRESHOLD} hrs/day): ${data.totalDoubleOT} hrs`, marginX+8, y+2);
+    doc.setTextColor(28,39,51);
+    y += 26;
+  }
 
   // Employee overtime table
   label('Employee Overtime', marginX, y); y += 16;
@@ -843,39 +823,56 @@ function buildTimesheetPDF(data){
   y += 30;
 
   // Mileage table
-  if(data.includeMileage){
-    label('Mileage Sheet', marginX, y); y += 16;
-    const mCols = [
-      {title:'DAY', width:120},
-      {title:'BUSINESS KM', width:150},
-      {title:'PERSONAL KM', width:usableWidth-120-150}
-    ];
-    y = drawTableHeader(mCols, y);
-    doc.setFont('helvetica','normal');
-    doc.setFontSize(9.5);
-    data.mileage.forEach(m=>{
-      let mcx = marginX+4;
-      doc.text(m.name, mcx, y); mcx += mCols[0].width;
-      doc.text(m.bus, mcx, y); mcx += mCols[1].width;
-      doc.text(m.per, mcx, y);
-      y += 16;
-    });
-    y += 8;
-    doc.setFont('helvetica','bold');
-    doc.setFontSize(10);
-    const busText = `Business: ${data.mBusTotal} km`;
-    const busWidth = doc.getTextWidth(busText);
-    doc.setFillColor(238,248,236);
-    doc.setDrawColor(76,170,63);
-    doc.setLineWidth(1);
-    doc.roundedRect(marginX-6, y-12, busWidth+12, 18, 3, 3, 'FD');
-    doc.setLineWidth(0.5);
+  label('Mileage Sheet', marginX, y); y += 16;
+  const mCols = [
+    {title:'DAY', width:65},
+    {title:'START', width:70},
+    {title:'END', width:70},
+    {title:'BUSINESS KM', width:90},
+    {title:'PERSONAL KM', width:usableWidth-65-70-70-90}
+  ];
+  y = drawTableHeader(mCols, y);
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(9.5);
+  data.mileage.forEach(m=>{
+    let mcx = marginX+4;
     doc.setTextColor(28,39,51);
-    doc.text(busText, marginX, y);
-    doc.text(`Personal: ${data.mPerTotal} km`, 200, y);
-    doc.text(`Week Total: ${data.mWeekTotal} km`, 360, y);
-    if(data.yearTotalKm){ y += 16; doc.text(`Year Total: ${data.yearTotalKm} km`, marginX, y); }
+    doc.setFont('helvetica','normal');
+    doc.text(m.name, mcx, y); mcx += mCols[0].width;
+    doc.text(m.start || '--', mcx, y); mcx += mCols[1].width;
+    doc.text(m.end || '--', mcx, y); mcx += mCols[2].width;
+    // Highlight any non-zero KM entry so mileage claims stand out on the page.
+    const bus = parseFloat(m.bus) || 0;
+    const per = parseFloat(m.per) || 0;
+    if(bus > 0){ doc.setFont('helvetica','bold'); doc.setTextColor(21,58,107); } else { doc.setFont('helvetica','normal'); doc.setTextColor(28,39,51); }
+    doc.text(m.bus, mcx, y); mcx += mCols[3].width;
+    if(per > 0){ doc.setFont('helvetica','bold'); doc.setTextColor(21,58,107); } else { doc.setFont('helvetica','normal'); doc.setTextColor(28,39,51); }
+    doc.text(m.per, mcx, y);
+    doc.setTextColor(28,39,51);
+    doc.setFont('helvetica','normal');
+    y += 16;
+  });
+  y += 8;
+
+  const mBusTotalNum = parseFloat(data.mBusTotal) || 0;
+  const mPerTotalNum = parseFloat(data.mPerTotal) || 0;
+  const mWeekTotalNum = parseFloat(data.mWeekTotal) || 0;
+  if(mWeekTotalNum > 0){
+    // Highlighted banner around the KM totals so mileage isn't missed.
+    doc.setFillColor(232, 243, 255);
+    doc.setDrawColor(120, 170, 220);
+    doc.roundedRect(marginX, y-13, usableWidth, 22, 3, 3, 'FD');
   }
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(10);
+  doc.setTextColor(mBusTotalNum > 0 ? 21 : 28, mBusTotalNum > 0 ? 58 : 39, mBusTotalNum > 0 ? 107 : 51);
+  doc.text(`Business: ${data.mBusTotal} km`, marginX, y);
+  doc.setTextColor(mPerTotalNum > 0 ? 21 : 28, mPerTotalNum > 0 ? 58 : 39, mPerTotalNum > 0 ? 107 : 51);
+  doc.text(`Personal: ${data.mPerTotal} km`, 200, y);
+  doc.setTextColor(mWeekTotalNum > 0 ? 21 : 28, mWeekTotalNum > 0 ? 58 : 39, mWeekTotalNum > 0 ? 107 : 51);
+  doc.text(`Week Total: ${data.mWeekTotal} km`, 360, y);
+  doc.setTextColor(28,39,51);
+  if(data.yearTotalKm){ y += 16; doc.text(`Year Total: ${data.yearTotalKm} km`, marginX, y); }
 
   y += 30;
   doc.setFont('helvetica','normal');
@@ -910,6 +907,7 @@ function gatherTimesheetData(){
       hours: document.getElementById('hours'+i).value || '0',
       regular: document.getElementById('reg'+i).value || '0',
       ot: document.getElementById('ot'+i).value || '0',
+      doubleOT: document.getElementById('dot'+i).value || '0',
       reason: document.getElementById('reason'+i).value.trim()
     });
   }
@@ -917,6 +915,8 @@ function gatherTimesheetData(){
   for(let i=0;i<7;i++){
     mileage.push({
       name: DAYS[i],
+      start: document.getElementById('mStart'+i).value,
+      end: document.getElementById('mEnd'+i).value,
       bus: document.getElementById('mBus'+i).value || '0',
       per: document.getElementById('mPer'+i).value || '0'
     });
@@ -933,12 +933,12 @@ function gatherTimesheetData(){
     totalHours: document.getElementById('totalHoursOut').textContent,
     totalRegular: document.getElementById('totalRegOut').textContent,
     totalOT: document.getElementById('totalOTOut').textContent,
+    totalDoubleOT: document.getElementById('totalDoubleOTOut').textContent,
     otWorked: document.getElementById('otWorked').value,
     otRolled: document.getElementById('otRolled').value || '0',
     otUsed: document.getElementById('otUsed').value || '0',
     otBalance: document.getElementById('otBalance').value,
     mileage,
-    includeMileage: document.getElementById('showMileage').checked,
     mBusTotal: document.getElementById('mBusOut').textContent,
     mPerTotal: document.getElementById('mPerOut').textContent,
     mWeekTotal: document.getElementById('mWeekOut').textContent,
