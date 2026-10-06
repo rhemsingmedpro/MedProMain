@@ -1,0 +1,109 @@
+Device,Battery,Mode,Setting,Setting Unit,Run Time (hours),Run Time (h:mm),Estimated (Y/N)
+Inogen Rove 6,8-cell battery,Pulse dose,1,setting,6.25,6:15,N
+Inogen Rove 6,8-cell battery,Pulse dose,2,setting,5,5:00,N
+Inogen Rove 6,8-cell battery,Pulse dose,3,setting,3.25,3:15,N
+Inogen Rove 6,8-cell battery,Pulse dose,4,setting,2.25,2:15,N
+Inogen Rove 6,8-cell battery,Pulse dose,5,setting,1.75,1:45,N
+Inogen Rove 6,8-cell battery,Pulse dose,6,setting,1.25,1:15,N
+Inogen Rove 6,16-cell battery,Pulse dose,1,setting,12.75,12:45,N
+Inogen Rove 6,16-cell battery,Pulse dose,2,setting,10.25,10:15,N
+Inogen Rove 6,16-cell battery,Pulse dose,3,setting,6.5,6:30,N
+Inogen Rove 6,16-cell battery,Pulse dose,4,setting,5.25,5:15,N
+Inogen Rove 6,16-cell battery,Pulse dose,5,setting,3.5,3:30,N
+Inogen Rove 6,16-cell battery,Pulse dose,6,setting,2.5,2:30,N
+DeVilbiss iGo2,Standard battery,Pulse dose,1,setting,3.33,3:20,Y
+DeVilbiss iGo2,Standard battery,Pulse dose,2,setting,3,3:00,N
+DeVilbiss iGo2,Standard battery,Pulse dose,3,setting,2.33,2:20,Y
+DeVilbiss iGo2,Standard battery,Pulse dose,4,setting,1.67,1:40,Y
+DeVilbiss iGo2,Standard battery,Pulse dose,5,setting,1.33,1:20,Y
+Philips Respironics SimplyGo,Standard battery,Pulse dose,1,setting,3.4,3:24,N
+Philips Respironics SimplyGo,Standard battery,Pulse dose,1.5,setting,3.2,3:12,Y
+Philips Respironics SimplyGo,Standard battery,Pulse dose,2,setting,3,3:00,N
+Philips Respironics SimplyGo,Standard battery,Pulse dose,2.5,setting,2.6,2:36,Y
+Philips Respironics SimplyGo,Standard battery,Pulse dose,3,setting,2.2,2:12,N
+Philips Respironics SimplyGo,Standard battery,Pulse dose,3.5,setting,1.95,1:57,Y
+Philips Respironics SimplyGo,Standard battery,Pulse dose,4,setting,1.7,1:42,N
+Philips Respironics SimplyGo,Standard battery,Pulse dose,4.5,setting,1.5,1:30,Y
+Philips Respironics SimplyGo,Standard battery,Pulse dose,5,setting,1.3,1:18,N
+Philips Respironics SimplyGo,Standard battery,Pulse dose,5.5,setting,1.3,1:18,Y
+Philips Respironics SimplyGo,Standard battery,Pulse dose,6,setting,1.3,1:18,N
+Philips Respironics SimplyGo,Standard battery,Continuous flow,0.5,LPM,2.9,2:54,N
+Philips Respironics SimplyGo,Standard battery,Continuous flow,1,LPM,1.6,1:36,N
+Philips Respironics SimplyGo,Standard battery,Continuous flow,1.5,LPM,1.25,1:15,Y
+Philips Respironics SimplyGo,Standard battery,Continuous flow,2,LPM,0.9,0:54,N
+SeQual Eclipse 5,Internal battery,Pulse dose,1,setting,5.4,5:24,N
+SeQual Eclipse 5,Internal battery,Pulse dose,1.5,setting,5.25,5:15,Y
+SeQual Eclipse 5,Internal battery,Pulse dose,2,setting,5.1,5:06,N
+SeQual Eclipse 5,Internal battery,Pulse dose,2.5,setting,5,5:00,Y
+SeQual Eclipse 5,Internal battery,Pulse dose,3,setting,4.9,4:54,N
+SeQual Eclipse 5,Internal battery,Pulse dose,3.5,setting,4.45,4:27,Y
+SeQual Eclipse 5,Internal battery,Pulse dose,4,setting,4,4:00,N
+SeQual Eclipse 5,Internal battery,Pulse dose,4.5,setting,3.85,3:51,Y
+SeQual Eclipse 5,Internal battery,Pulse dose,5,setting,3.7,3:42,N
+SeQual Eclipse 5,Internal battery,Pulse dose,5.5,setting,3.6,3:36,Y
+SeQual Eclipse 5,Internal battery,Pulse dose,6,setting,3.5,3:30,N
+SeQual Eclipse 5,Internal battery,Pulse dose,6.5,setting,3,3:00,Y
+SeQual Eclipse 5,Internal battery,Pulse dose,7,setting,2.5,2:30,N
+SeQual Eclipse 5,Internal battery,Pulse dose,7.5,setting,2.25,2:15,Y
+SeQual Eclipse 5,Internal battery,Pulse dose,8,setting,2,2:00,N
+SeQual Eclipse 5,Internal battery,Pulse dose,8.5,setting,1.85,1:51,Y
+SeQual Eclipse 5,Internal battery,Pulse dose,9,setting,1.7,1:42,N
+SeQual Eclipse 5,Internal battery,Continuous flow,0.5,LPM,4.4,4:24,N
+SeQual Eclipse 5,Internal battery,Continuous flow,1,LPM,3.7,3:42,N
+SeQual Eclipse 5,Internal battery,Continuous flow,1.5,LPM,2.85,2:51,Y
+SeQual Eclipse 5,Internal battery,Continuous flow,2,LPM,2,2:00,N
+SeQual Eclipse 5,Internal battery,Continuous flow,2.5,LPM,1.65,1:39,Y
+SeQual Eclipse 5,Internal battery,Continuous flow,3,LPM,1.3,1:18,N
+O2 Concepts Independence,Double battery,Pulse dose,0.5,setting,5,5:00,N
+O2 Concepts Independence,Double battery,Pulse dose,1,setting,4.5,4:30,N
+O2 Concepts Independence,Double battery,Pulse dose,1.5,setting,4.25,4:15,N
+O2 Concepts Independence,Double battery,Pulse dose,2,setting,3.75,3:45,N
+O2 Concepts Independence,Double battery,Pulse dose,2.5,setting,3.5,3:30,N
+O2 Concepts Independence,Double battery,Pulse dose,3,setting,3,3:00,N
+O2 Concepts Independence,Double battery,Pulse dose,3.5,setting,2.75,2:45,N
+O2 Concepts Independence,Double battery,Pulse dose,4,setting,2.5,2:30,N
+O2 Concepts Independence,Double battery,Pulse dose,4.5,setting,2,2:00,N
+O2 Concepts Independence,Double battery,Pulse dose,5,setting,2,2:00,N
+O2 Concepts Independence,Double battery,Pulse dose,5.5,setting,1.75,1:45,N
+O2 Concepts Independence,Double battery,Pulse dose,6,setting,1.75,1:45,N
+O2 Concepts Independence,Double battery,Continuous flow,0.5,LPM,4.75,4:45,N
+O2 Concepts Independence,Double battery,Continuous flow,1,LPM,3.75,3:45,N
+O2 Concepts Independence,Double battery,Continuous flow,1.5,LPM,3,3:00,N
+O2 Concepts Independence,Double battery,Continuous flow,2,LPM,2.25,2:15,N
+O2 Concepts Independence,Double battery,Continuous flow,2.5,LPM,2,2:00,N
+O2 Concepts Independence,Double battery,Continuous flow,3,LPM,1.5,1:30,N
+O2 Concepts Independence,Single battery,Pulse dose,0.5,setting,2.5,2:30,N
+O2 Concepts Independence,Single battery,Pulse dose,1,setting,2.25,2:15,N
+O2 Concepts Independence,Single battery,Pulse dose,1.5,setting,2.1,2:06,N
+O2 Concepts Independence,Single battery,Pulse dose,2,setting,1.9,1:54,N
+O2 Concepts Independence,Single battery,Pulse dose,2.5,setting,1.75,1:45,N
+O2 Concepts Independence,Single battery,Pulse dose,3,setting,1.5,1:30,N
+O2 Concepts Independence,Single battery,Pulse dose,3.5,setting,1.4,1:24,N
+O2 Concepts Independence,Single battery,Pulse dose,4,setting,1.25,1:15,N
+O2 Concepts Independence,Single battery,Pulse dose,4.5,setting,1,1:00,N
+O2 Concepts Independence,Single battery,Pulse dose,5,setting,1,1:00,N
+O2 Concepts Independence,Single battery,Pulse dose,5.5,setting,0.9,0:54,N
+O2 Concepts Independence,Single battery,Pulse dose,6,setting,0.9,0:54,N
+O2 Concepts Independence,Single battery,Continuous flow,0.5,LPM,2.4,2:24,N
+O2 Concepts Independence,Single battery,Continuous flow,1,LPM,1.9,1:54,N
+O2 Concepts Independence,Single battery,Continuous flow,1.5,LPM,1.5,1:30,N
+O2 Concepts Independence,Single battery,Continuous flow,2,LPM,1.25,1:15,N
+O2 Concepts Independence,Single battery,Continuous flow,2.5,LPM,1,1:00,N
+O2 Concepts Independence,Single battery,Continuous flow,3,LPM,0.75,0:45,N
+O2 Concepts Liberty 2,Standard battery,Pulse dose,1,setting,3,3:00,N
+O2 Concepts Liberty 2,Standard battery,Pulse dose,2,setting,2.75,2:45,N
+O2 Concepts Liberty 2,Standard battery,Pulse dose,3,setting,2.5,2:30,N
+O2 Concepts Liberty 2,Standard battery,Pulse dose,4,setting,2,2:00,N
+O2 Concepts Liberty 2,Standard battery,Pulse dose,5,setting,1.75,1:45,N
+O2 Concepts Liberty 2,Standard battery,Pulse dose,6,setting,1.5,1:30,N
+O2 Concepts Liberty 2,Standard battery,Pulse dose,7,setting,1.3,1:18,N
+O2 Concepts Liberty 2,Standard battery,Pulse dose,8,setting,1.1,1:06,N
+O2 Concepts Liberty 2,Standard battery,Pulse dose,9,setting,1.1,1:06,N
+O2 Concepts Liberty 2,Standard battery,Pulse dose,10,setting,1,1:00,N
+O2 Concepts Liberty 2,Standard battery,Continuous flow,0.5,LPM,2.25,2:15,N
+O2 Concepts Liberty 2,Standard battery,Continuous flow,0.75,LPM,2.25,2:15,N
+O2 Concepts Liberty 2,Standard battery,Continuous flow,1,LPM,1.75,1:45,N
+O2 Concepts Liberty 2,Standard battery,Continuous flow,1.25,LPM,1.5,1:30,N
+O2 Concepts Liberty 2,Standard battery,Continuous flow,1.5,LPM,1.25,1:15,N
+O2 Concepts Liberty 2,Standard battery,Continuous flow,1.75,LPM,1,1:00,N
+O2 Concepts Liberty 2,Standard battery,Continuous flow,2,LPM,0.9,0:54,N

@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MedPro Portable Duration Calculator</title>
+<style>
+  :root {
+    --navy: #003D79;
+    --navy-dark: #00274F;
+    --green: #50B948;
+    --green-dark: #3CA55C;
+    --bg: #F4F6F8;
+    --card: #FFFFFF;
+    --border: #DDE3EA;
+    --text: #1C2733;
+    --text-muted: #5A6B7B;
+    --green-bg: #EAF7E9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  header {
+    background: var(--navy);
+    color: white;
+    padding: 18px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  header h1 { font-size: 1.25rem; margin: 0; font-weight: 600; }
+  header .sub { font-size: 0.8rem; opacity: 0.8; margin-top: 2px; }
+  .back-link {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #fff;
+    text-decoration: none;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.12);
+  }
+  .back-link:hover { background: rgba(255,255,255,0.22); }
+  main { max-width: 760px; margin: 0 auto; padding: 20px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    margin-bottom: 20px;
+  }
+  .card h2 { font-size: 1rem; margin: 0 0 14px 0; color: var(--navy); }
+  label, .label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+  .field { margin-bottom: 18px; }
+  .field:last-child { margin-bottom: 0; }
+  select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 1rem;
+    font-family: inherit;
+    background: white;
+    color: var(--text);
+  }
+  select:focus, button:focus-visible {
+    outline: none;
+    border-color: var(--navy);
+    box-shadow: 0 0 0 2px rgba(0,61,121,0.25);
+  }
+  button { cursor: pointer; font-family: inherit; }
+
+  /* Pediatric / Adult toggle */
+  .toggle {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    background: #E6ECF2;
+    border-radius: 999px;
+    padding: 4px;
+  }
+  .toggle button {
+    border: none;
+    background: transparent;
+    border-radius: 999px;
+    padding: 10px 6px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--navy);
+  }
+  .manual-link { font-size: 0.85rem; font-weight: 600; color: var(--navy); text-decoration: none; }
+  .manual-link:hover { text-decoration: underline; }
+  .manual-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .manual-btn {
+    display: inline-block;
+    background: white;
+    color: var(--navy);
+    border: 1px solid var(--navy);
+    border-radius: 6px;
+    padding: 7px 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    font-family: inherit;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .manual-btn:hover { background: #EEF3F8; }
+  .hidden { display: none !important; }
+  .est { color: var(--text-muted); font-weight: 400; font-size: 0.8em; }
+  .toggle button.active { background: var(--navy); color: white; }
+
+  /* Cylinder selector */
+  .cyl-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .cyl-btn {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 6px;
+    text-align: center;
+    color: var(--text);
+  }
+  .cyl-btn .name { display: block; font-size: 1.1rem; font-weight: 700; color: var(--navy); }
+  .cyl-btn .vol { display: block; font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+  .cyl-btn:hover { background: #F8FAFC; }
+  .cyl-btn.active { border-color: var(--green); background: var(--green-bg); box-shadow: 0 0 0 2px rgba(80,185,72,0.35); }
+
+  /* Result */
+  .result {
+    background: var(--navy);
+    color: white;
+    border-radius: 10px;
+    padding: 22px 20px;
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  .result .r-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.8; }
+  .result .r-value { font-size: 2.4rem; font-weight: 700; margin: 6px 0 4px; line-height: 1.15; }
+  .result .r-detail { font-size: 0.85rem; opacity: 0.85; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  th {
+    text-align: left;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: white;
+    background: var(--navy);
+    padding: 7px 10px;
+  }
+  th:first-child { border-radius: 6px 0 0 6px; }
+  th:last-child { border-radius: 0 6px 6px 0; }
+  td { padding: 9px 10px; border-bottom: 1px solid var(--border); }
+  tr.selected td { background: var(--green-bg); font-weight: 700; }
+  tr:last-child td { border-bottom: none; }
+
+  .note { font-size: 0.78rem; color: var(--text-muted); margin: 0; }
+  footer { text-align: center; font-size: 0.78rem; color: var(--text-muted); padding: 0 20px 28px; }
+
+  @media (max-width: 480px) {
+    main { padding: 14px; }
+    .result .r-value { font-size: 2rem; }
+    .cyl-grid { gap: 8px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Portable Duration Calculator</h1>
+    <div class="sub">MedPro Respiratory Care</div>
+  </div>
+  <a class="back-link" href="../">&larr; Back to Portal</a>
+</header>
+
+<main>
+  <div class="card">
+    <div class="field">
+      <span class="label" id="patientLabel">Patient type</span>
+      <div class="toggle" role="group" aria-labelledby="patientLabel">
+        <button type="button" id="btnPeds" aria-pressed="false">Pediatric</button>
+        <button type="button" id="btnAdult" class="active" aria-pressed="true">Adult</button>
+        <button type="button" id="btnOcd" aria-pressed="false">OCD</button>
+        <button type="button" id="btnPoc" aria-pressed="false">POC Battery</button>
+      </div>
+    </div>
+
+    <div id="cylFields">
+      <div class="field">
+        <label for="flow" id="flowLabel">Flow rate</label>
+        <select id="flow"></select>
+      </div>
+
+      <div class="field">
+        <span class="label" id="cylLabel">Cylinder size</span>
+        <div class="cyl-grid" id="cylGrid" role="group" aria-labelledby="cylLabel"></div>
+      </div>
+
+      <div class="field">
+        <label for="psi">Pressure in cylinder</label>
+        <select id="psi"></select>
+      </div>
+    </div>
+
+    <div id="pocFields" class="hidden">
+      <div class="field">
+        <label for="device">Device</label>
+        <select id="device"></select>
+      </div>
+      <div class="field" style="margin-top:-8px">
+        <a id="manualLink" class="manual-link" href="#" target="_blank" rel="noopener">&#128196; User manual</a>
+        <div class="manual-actions">
+          <a id="emailLink" class="manual-btn" href="#">&#9993; Email link to manual</a>
+          <button type="button" id="attachBtn" class="manual-btn hidden">&#128206; Email with PDF attached</button>
+        </div>
+        <div class="note" id="shareMsg" aria-live="polite"></div>
+      </div>
+      <div class="field" id="battField">
+        <label for="batt">Battery</label>
+        <select id="batt"></select>
+      </div>
+      <div class="field">
+        <label for="setting">Setting</label>
+        <select id="setting"></select>
+      </div>
+    </div>
+  </div>
+
+  <div class="result" aria-live="polite">
+    <div class="r-label" id="rLabel">Estimated duration</div>
+    <div class="r-value" id="rValue">&ndash;</div>
+    <div class="r-detail" id="rDetail"></div>
+  </div>
+
+  <div class="card" id="cylCard">
+    <h2>All cylinders at <span id="tblFlow"></span></h2>
+    <table>
+      <thead><tr><th>Cylinder</th><th>Contents</th><th>Duration</th></tr></thead>
+      <tbody id="tblBody"></tbody>
+    </table>
+  </div>
+
+  <div class="card hidden" id="pocCard">
+    <h2>All settings: <span id="pocTblTitle"></span></h2>
+    <table>
+      <thead><tr><th>Setting</th><th>Battery run time</th></tr></thead>
+      <tbody id="pocTblBody"></tbody>
+    </table>
+  </div>
+
+  <p class="note" style="text-align:center" id="noteCyl">
+    Duration = (full volume &times; PSI &divide; 2,000) &divide; flow rate (LPM). A full cylinder is taken as 2,000 PSI. OCD mode multiplies the duration by 3. Estimate only.
+  </p>
+  <p class="note hidden" style="text-align:center" id="notePoc">
+    Run times are manufacturer or retailer published figures for a new, fully charged battery (typically 20 breaths/min; the Eclipse 5 uses 12). Higher breath rates, age of the battery, temperature and altitude shorten them.
+    <span class="est">~ = estimated (interpolated or scaled) by this app, not published. Always verify against the device manual.</span>
+  </p>
+</main>
+
+<footer>MedPro Respiratory Care &mdash; Internal Staff Tools</footer>
+
+<script>
+  const CYLINDERS = [
+    { name: 'M6', litres: 164 },
+    { name: 'C',  litres: 248 },
+    { name: 'D',  litres: 415 },
+    { name: 'E',  litres: 682 }
+  ];
+  const FLOWS = {
+    peds:  [0.016, 0.03, 0.06, 0.12, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0],
+    adult: [0.5, 1, 1.5, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+    ocd:   [1, 2, 3, 4, 5, 6]
+  };
+
+  let mode = 'adult';
+  let cylIndex = 0;
+  const FULL_PSI = 2000; // pressure at which the stated cylinder volume applies
+
+  const flowSel = document.getElementById('flow');
+  const cylGrid = document.getElementById('cylGrid');
+  const psiSel = document.getElementById('psi');
+
+  const OCD_FACTOR = 3; // OCD extends duration x3 vs. continuous flow at the same number
+
+  function fmtFlow(f) {
+    if (mode === 'ocd') return 'Pulse setting ' + f;
+    return (Number.isInteger(f) ? f.toFixed(1) : String(f)) + ' LPM';
+  }
+
+  function fmtDuration(litres, flow) {
+    const factor = mode === 'ocd' ? OCD_FACTOR : 1;
+    return fmtMin(Math.round(litres / flow * factor)); // L ÷ LPM = minutes
+  }
+
+  function fmtMin(totalMin) {
+    const h = Math.floor(totalMin / 60);
+    const m = totalMin % 60;
+    let s = h > 0 ? h + ' h ' + m + ' min' : m + ' min';
+    if (h >= 48) s += ' (' + (totalMin / 1440).toFixed(1) + ' days)';
+    return s;
+  }
+
+  function buildFlows() {
+    flowSel.innerHTML = '';
+    FLOWS[mode].forEach(f => {
+      const o = document.createElement('option');
+      o.value = f;
+      o.textContent = fmtFlow(f);
+      flowSel.appendChild(o);
+    });
+    // Sensible defaults: 2 LPM adult, 1 LPM pediatric, setting 2 OCD
+    flowSel.value = mode === 'peds' ? '1' : '2';
+    document.getElementById('flowLabel').textContent = mode === 'ocd' ? 'Pulse setting' : 'Flow rate';
+  }
+
+  function buildPsi() {
+    for (let p = 2000; p >= 500; p -= 100) {
+      const o = document.createElement('option');
+      o.value = p;
+      o.textContent = p.toLocaleString('en-US') + ' PSI' + (p === FULL_PSI ? ' (full)' : '');
+      psiSel.appendChild(o);
+    }
+  }
+
+  function buildCylinders() {
+    CYLINDERS.forEach((c, i) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'cyl-btn';
+      b.innerHTML = '<span class="name">' + c.name + '</span><span class="vol">' + c.litres + ' L</span>';
+      b.addEventListener('click', () => { cylIndex = i; render(); });
+      cylGrid.appendChild(b);
+    });
+  }
+
+  // ---- POC battery data (hours) ----
+  // Published figures only; anything between published points is interpolated and flagged est.
+  const range = (from, to, step) => {
+    const a = [];
+    for (let v = from; v <= to + 1e-9; v += step) a.push(Math.round(v * 100) / 100);
+    return a;
+  };
+  // pub: {setting: hours}; all: every setting on the device
+  function fill(pub, all, mode) {
+    const keys = Object.keys(pub).map(Number).sort((a, b) => a - b);
+    return all.map(v => {
+      if (pub[v] !== undefined) return { v, mode, h: pub[v], est: false };
+      const lo = keys.filter(k => k < v).pop();
+      const hi = keys.find(k => k > v);
+      if (lo === undefined || hi === undefined) return null;
+      return { v, mode, h: pub[lo] + (pub[hi] - pub[lo]) * (v - lo) / (hi - lo), est: true };
+    }).filter(Boolean);
+  }
+  const pulse = (pub, all) => fill(pub, all, 'Pulse');
+  const cont  = (pub, all) => fill(pub, all, 'Continuous');
+
+  // iGo2: Drive publishes 3.5 h minimum at setting 2, but MedPro sees 3.0 h in real use, so 3.0 h is the base.
+  // Other settings are scaled using the setting-to-setting ratio retailers publish (5 / 4.5 / 3.5 / 2.5 / 2 h).
+  const igoRatio = { 1: 5 / 4.5, 2: 1, 3: 3.5 / 4.5, 4: 2.5 / 4.5, 5: 2 / 4.5 };
+  const igo = base => range(1, 5, 1).map(v => ({ v, mode: 'Pulse', h: base * igoRatio[v], est: v !== 2 }));
+
+  // Independence: "Typical Battery Operation Times" table from the O2 Concepts user manual (20 breaths/min).
+  const indepAll = range(0.5, 6, 0.5);
+  const indepPulse2 = pulse({ 0.5: 5, 1: 4.5, 1.5: 4.25, 2: 3.75, 2.5: 3.5, 3: 3, 3.5: 2.75, 4: 2.5, 4.5: 2, 5: 2, 5.5: 1.75, 6: 1.75 }, indepAll);
+  const indepPulse1 = pulse({ 0.5: 2.5, 1: 2.25, 1.5: 2.1, 2: 1.9, 2.5: 1.75, 3: 1.5, 3.5: 1.4, 4: 1.25, 4.5: 1, 5: 1, 5.5: 0.9, 6: 0.9 }, indepAll);
+  const indepCont2 = cont({ 0.5: 4.75, 1: 3.75, 1.5: 3, 2: 2.25, 2.5: 2, 3: 1.5 }, range(0.5, 3, 0.5));
+  const indepCont1 = cont({ 0.5: 2.4, 1: 1.9, 1.5: 1.5, 2: 1.25, 2.5: 1, 3: 0.75 }, range(0.5, 3, 0.5));
+
+  const POC = [
+    { name: 'Inogen Rove 6', manual: 'Inogen Rove 6/Inogen_Rove6_User_Manual_EN_ES_Feb2026.pdf', batteries: [
+        { name: '8-cell battery',  settings: pulse({ 1: 6.25, 2: 5, 3: 3.25, 4: 2.25, 5: 1.75, 6: 1.25 }, range(1, 6, 1)) },
+        { name: '16-cell battery', settings: pulse({ 1: 12.75, 2: 10.25, 3: 6.5, 4: 5.25, 5: 3.5, 6: 2.5 }, range(1, 6, 1)) } ] },
+    { name: 'DeVilbiss iGo2', manual: 'DeVilbiss iGo2/Drive_iGo2_Owners_Manual.pdf', batteries: [
+        { name: 'Standard battery', settings: igo(3) } ] },
+    { name: 'Philips Respironics SimplyGo', manual: 'Philips Respironics SimplyGo/SimplyGo_User_Manual.pdf', batteries: [
+        { name: 'Standard battery', settings: [
+            ...pulse({ 1: 3.4, 2: 3, 3: 2.2, 4: 1.7, 5: 1.3, 6: 1.3 }, range(1, 6, 0.5)),
+            ...cont({ 0.5: 2.9, 1: 1.6, 2: 0.9 }, range(0.5, 2, 0.5)) ] } ] },
+    { name: 'SeQual Eclipse 5', manual: 'SeQual Eclipse 5/CAIRE_Eclipse5_QuickStart.pdf', manualLabel: 'Quick start guide', batteries: [
+        { name: 'Internal battery', settings: [
+            ...pulse({ 1: 5.4, 2: 5.1, 3: 4.9, 4: 4, 5: 3.7, 6: 3.5, 7: 2.5, 8: 2, 9: 1.7 }, range(1, 9, 0.5)),
+            ...cont({ 0.5: 4.4, 1: 3.7, 2: 2, 3: 1.3 }, range(0.5, 3, 0.5)) ] } ] },
+    { name: 'O2 Concepts Independence', manual: 'O2 Concepts Independence/Oxlife_Independence_User_Manual_800-1097_RevC.pdf', batteries: [
+        { name: 'Double battery', settings: [...indepPulse2, ...indepCont2] },
+        { name: 'Single battery', settings: [...indepPulse1, ...indepCont1] } ] },
+    { name: 'O2 Concepts Liberty 2', manual: 'O2 Concepts Liberty 2/Oxlife_Liberty_Liberty2_User_Manual_800-1075_RevF.pdf', batteries: [
+        { name: 'Standard battery', settings: [
+            ...pulse({ 1: 3, 2: 2.75, 3: 2.5, 4: 2, 5: 1.75, 6: 1.5, 7: 1.3, 8: 1.1, 9: 1.1, 10: 1 }, range(1, 10, 1)),
+            ...cont({ 0.5: 2.25, 0.75: 2.25, 1: 1.75, 1.25: 1.5, 1.5: 1.25, 1.75: 1, 2: 0.9 }, range(0.5, 2, 0.25)) ] } ] }
+  ];
+
+  const deviceSel = document.getElementById('device');
+  const battSel = document.getElementById('batt');
+  const settingSel = document.getElementById('setting');
+
+  const fmtSet = s => s.mode === 'Pulse'
+    ? 'Pulse ' + s.v
+    : 'Continuous ' + (Number.isInteger(s.v) ? s.v.toFixed(1) : s.v) + ' LPM';
+  const fmtPocTime = s => (s.est ? '~' : '') + fmtMin(Math.round(s.h * 60));
+
+  function buildDevices() {
+    POC.forEach((d, i) => deviceSel.appendChild(new Option(d.name, i)));
+    buildBatteries();
+  }
+
+  function buildBatteries() {
+    const d = POC[deviceSel.value];
+    battSel.innerHTML = '';
+    d.batteries.forEach((b, i) => battSel.appendChild(new Option(b.name, i)));
+    document.getElementById('battField').classList.toggle('hidden', d.batteries.length < 2);
+    const link = document.getElementById('manualLink');
+    link.href = 'Manuals/' + encodeURI(d.manual);
+    link.innerHTML = '&#128196; ' + (d.manualLabel || 'User manual') + ' (PDF)';
+
+    // A web page can't attach a file through a mailto: link, so the link version carries the full URL.
+    // Where the browser can share files (phones, Edge/Chrome on Windows), a second button attaches the real PDF.
+    let url = link.getAttribute('href');
+    try { url = new URL(url, location.href).href; } catch (e) { /* keep the relative path */ }
+    const subject = d.name + ' ' + (d.manualLabel || 'user manual');
+    document.getElementById('emailLink').href = 'mailto:?subject=' + encodeURIComponent(subject) +
+      '&body=' + encodeURIComponent('Please find the ' + subject + ' here:\n' + url + '\n\nMedPro Respiratory Care');
+    document.getElementById('shareMsg').textContent = '';
+    const canShareFiles = !!(navigator.canShare && navigator.share &&
+      navigator.canShare({ files: [new File([''], 'x.pdf', { type: 'application/pdf' })] }));
+    document.getElementById('attachBtn').classList.toggle('hidden', !canShareFiles || location.protocol === 'file:');
+    buildSettings();
+  }
+
+  async function shareManual() {
+    const d = POC[deviceSel.value];
+    const msg = document.getElementById('shareMsg');
+    const href = document.getElementById('manualLink').href;
+    const subject = d.name + ' ' + (d.manualLabel || 'user manual');
+    msg.textContent = 'Preparing PDF…';
+    try {
+      const blob = await (await fetch(href)).blob();
+      const file = new File([blob], decodeURIComponent(href.split('/').pop()), { type: 'application/pdf' });
+      await navigator.share({ files: [file], title: subject, text: 'Please find the ' + subject + ' attached.' });
+      msg.textContent = '';
+    } catch (e) {
+      msg.textContent = e.name === 'AbortError' ? '' : 'Could not attach the PDF here. Use "Email link to manual" instead.';
+    }
+  }
+
+  function buildSettings() {
+    const prev = settingSel.selectedOptions.length ? settingSel.selectedOptions[0].text : '';
+    const list = POC[deviceSel.value].batteries[battSel.value].settings;
+    settingSel.innerHTML = '';
+    ['Pulse', 'Continuous'].forEach(mode => {
+      const items = list.map((s, i) => [s, i]).filter(([s]) => s.mode === mode);
+      if (!items.length) return;
+      const g = document.createElement('optgroup');
+      g.label = mode === 'Pulse' ? 'Pulse dose' : 'Continuous flow';
+      items.forEach(([s, i]) => g.appendChild(new Option(fmtSet(s), i)));
+      settingSel.appendChild(g);
+    });
+    // keep the same setting (by label) when the new list has it; otherwise default to Pulse 2
+    const keep = [...settingSel.options].find(o => o.text === prev);
+    const def = [...settingSel.options].find(o => list[o.value].mode === 'Pulse' && list[o.value].v === 2);
+    settingSel.value = (keep || def || settingSel.options[0]).value;
+  }
+
+  function renderPoc() {
+    const d = POC[deviceSel.value];
+    const b = d.batteries[battSel.value];
+    const s = b.settings[settingSel.value];
+    const multi = d.batteries.length > 1;
+    document.getElementById('rLabel').textContent = d.name + (multi ? ', ' + b.name : '') + ', ' + fmtSet(s);
+    document.getElementById('rValue').textContent = fmtPocTime(s);
+    document.getElementById('rDetail').textContent = 'Published battery run time on a full charge' + (s.est ? ' (estimated by this app)' : '');
+    document.getElementById('pocTblTitle').textContent = d.name + (multi ? ', ' + b.name : '');
+    document.getElementById('pocTblBody').innerHTML = b.settings.map(x =>
+      '<tr' + (x === s ? ' class="selected"' : '') + '><td>' + fmtSet(x) + '</td><td>' + fmtPocTime(x) + '</td></tr>'
+    ).join('');
+  }
+
+  function render() {
+    if (mode === 'poc') return renderPoc();
+    const flow = parseFloat(flowSel.value);
+    const cyl = CYLINDERS[cylIndex];
+    const psi = parseInt(psiSel.value, 10);
+    const avail = c => c.litres * psi / FULL_PSI;
+    const fmtL = l => (Number.isInteger(l) ? l : l.toFixed(1)) + ' L';
+
+    [...cylGrid.children].forEach((b, i) => {
+      b.classList.toggle('active', i === cylIndex);
+      b.setAttribute('aria-pressed', i === cylIndex);
+    });
+
+    const psiTxt = psi.toLocaleString('en-US') + ' PSI';
+    document.getElementById('rLabel').textContent = cyl.name + ' cylinder at ' + psiTxt + ', ' + fmtFlow(flow);
+    document.getElementById('rValue').textContent = fmtDuration(avail(cyl), flow);
+    const totalMin = Math.round(avail(cyl) / flow * (mode === 'ocd' ? OCD_FACTOR : 1));
+    document.getElementById('rDetail').textContent = fmtL(avail(cyl)) + ' ÷ ' + flow +
+      (mode === 'ocd' ? ' × ' + OCD_FACTOR + ' (OCD)' : ' LPM') + ' = ' + totalMin + ' minutes';
+
+    document.getElementById('tblFlow').textContent = psiTxt + ', ' + fmtFlow(flow);
+    document.getElementById('tblBody').innerHTML = CYLINDERS.map((c, i) =>
+      '<tr' + (i === cylIndex ? ' class="selected"' : '') + '><td>' + c.name + '</td><td>' +
+      fmtL(avail(c)) + '</td><td>' + fmtDuration(avail(c), flow) + '</td></tr>'
+    ).join('');
+  }
+
+  function setMode(m) {
+    mode = m;
+    [['btnPeds', 'peds'], ['btnAdult', 'adult'], ['btnOcd', 'ocd'], ['btnPoc', 'poc']].forEach(([id, key]) => {
+      const b = document.getElementById(id);
+      b.classList.toggle('active', m === key);
+      b.setAttribute('aria-pressed', m === key);
+    });
+    const poc = m === 'poc';
+    ['cylFields', 'cylCard', 'noteCyl'].forEach(id => document.getElementById(id).classList.toggle('hidden', poc));
+    ['pocFields', 'pocCard', 'notePoc'].forEach(id => document.getElementById(id).classList.toggle('hidden', !poc));
+    if (!poc) buildFlows();
+    render();
+  }
+
+  document.getElementById('btnPeds').addEventListener('click', () => setMode('peds'));
+  document.getElementById('btnAdult').addEventListener('click', () => setMode('adult'));
+  document.getElementById('btnOcd').addEventListener('click', () => setMode('ocd'));
+  document.getElementById('btnPoc').addEventListener('click', () => setMode('poc'));
+  deviceSel.addEventListener('change', () => { buildBatteries(); render(); });
+  battSel.addEventListener('change', () => { buildSettings(); render(); });
+  settingSel.addEventListener('change', render);
+  document.getElementById('attachBtn').addEventListener('click', shareManual);
+  flowSel.addEventListener('change', render);
+  psiSel.addEventListener('change', render);
+
+  buildPsi();
+  buildCylinders();
+  buildDevices();
+  setMode('adult');
+</script>
+</body>
+</html>
