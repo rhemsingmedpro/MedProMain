@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Device Manual</title>
+<style>
+  :root {
+    --navy: #003D79;
+    --bg: #E9EDF1;
+    --text: #1C2733;
+    --text-muted: #5A6B7B;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--navy);
+    color: white;
+    padding: 12px 16px;
+    padding-top: max(12px, env(safe-area-inset-top));
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .back-btn {
+    flex-shrink: 0;
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #fff;
+    background: rgba(255,255,255,0.18);
+    border: none;
+    border-radius: 999px;
+    padding: 9px 16px;
+    cursor: pointer;
+  }
+  .back-btn:active { background: rgba(255,255,255,0.3); }
+  .title { flex: 1; min-width: 0; font-size: 0.95rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .open-link { flex-shrink: 0; font-size: 0.8rem; color: #fff; opacity: 0.85; }
+  #pages { padding: 10px 0 40px; }
+  .page {
+    display: block;
+    margin: 0 auto 10px;
+    background: #fff;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+    max-width: 100%;
+  }
+  #status { text-align: center; padding: 40px 20px; color: var(--text-muted); }
+  #status a { color: var(--navy); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<header>
+  <button type="button" class="back-btn" id="backBtn">&larr; Back</button>
+  <div class="title" id="title">Loading manual&hellip;</div>
+  <a class="open-link" id="openLink" href="#" target="_blank" rel="noopener">Open PDF</a>
+</header>
+
+<div id="status">Loading manual&hellip;</div>
+<div id="pages"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+  // Only PDFs inside the Manuals folder may be shown.
+  const file = new URLSearchParams(location.search).get('file') || '';
+  const valid = /^Manuals\/[^?#]+\.pdf$/i.test(file) && file.indexOf('..') === -1;
+  const status = document.getElementById('status');
+  const pagesEl = document.getElementById('pages');
+
+  // Back to the calculator. In an iPhone home-screen app there is no browser Back button, so this one is needed.
+  document.getElementById('backBtn').addEventListener('click', () => {
+    if (document.referrer && history.length > 1) history.back();
+    else location.href = './';
+  });
+
+  function fail(msg) {
+    const open = valid ? ' <a href="' + encodeURI(file) + '">Open the PDF directly</a>.' : '';
+    status.innerHTML = msg + open;
+  }
+
+  if (!valid) {
+    fail('That manual could not be found.');
+  } else if (!window.pdfjsLib) {
+    fail('The manual viewer could not load (no internet connection?).');
+  } else {
+    const name = decodeURIComponent(file.split('/').pop()).replace(/\.pdf$/i, '').replace(/_/g, ' ');
+    document.getElementById('title').textContent = name;
+    document.title = name;
+    document.getElementById('openLink').href = encodeURI(file);
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+    pdfjsLib.getDocument(encodeURI(file)).promise.then(async pdf => {
+      status.textContent = '';
+      const avail = document.documentElement.clientWidth || window.innerWidth || screen.width || 360;
+      const width = Math.max(280, Math.min(avail, 900));
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const holders = [];
+
+      for (let n = 1; n <= pdf.numPages; n++) {
+        const page = await pdf.getPage(n);
+        const base = page.getViewport({ scale: 1 });
+        const scale = width / base.width;
+        const canvas = document.createElement('canvas');
+        canvas.className = 'page';
+        canvas.style.width = width + 'px';
+        canvas.style.height = Math.round(base.height * scale) + 'px';
+        canvas.dataset.n = n;
+        pagesEl.appendChild(canvas);
+        holders.push({ canvas, page, scale, done: false });
+      }
+
+      // Draw pages as they come near the screen so large manuals stay fast on a phone.
+      const draw = h => {
+        if (h.done) return;
+        h.done = true;
+        const vp = h.page.getViewport({ scale: h.scale * dpr });
+        h.canvas.width = vp.width;
+        h.canvas.height = vp.height;
+        h.page.render({ canvasContext: h.canvas.getContext('2d'), viewport: vp });
+      };
+      const io = new IntersectionObserver(entries => {
+        entries.forEach(e => { if (e.isIntersecting) draw(holders[e.target.dataset.n - 1]); });
+      }, { rootMargin: '1200px 0px' });
+      holders.forEach(h => io.observe(h.canvas));
+    }).catch(() => fail('This manual could not be displayed.'));
+  }
+</script>
+</body>
+</html>

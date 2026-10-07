@@ -220,7 +220,7 @@
         <select id="device"></select>
       </div>
       <div class="field" style="margin-top:-8px">
-        <a id="manualLink" class="manual-link" href="#" target="_blank" rel="noopener">&#128196; User manual</a>
+        <a id="manualLink" class="manual-link" href="#">&#128196; User manual</a>
         <div class="manual-actions">
           <a id="emailLink" class="manual-btn" href="#">&#9993; Email link to manual</a>
           <button type="button" id="attachBtn" class="manual-btn hidden">&#128206; Email with PDF attached</button>
@@ -421,12 +421,15 @@
     d.batteries.forEach((b, i) => battSel.appendChild(new Option(b.name, i)));
     document.getElementById('battField').classList.toggle('hidden', d.batteries.length < 2);
     const link = document.getElementById('manualLink');
-    link.href = 'Manuals/' + encodeURI(d.manual);
+    // The manual opens in our own viewer page (with a Back button) so staff using the iPhone home-screen app can return.
+    const pdfPath = 'Manuals/' + d.manual;
+    link.dataset.pdf = encodeURI(pdfPath);
+    link.href = 'manual-viewer.html?file=' + encodeURIComponent(pdfPath);
     link.innerHTML = '&#128196; ' + (d.manualLabel || 'User manual') + ' (PDF)';
 
     // A web page can't attach a file through a mailto: link, so the link version carries the full URL.
     // Where the browser can share files (phones, Edge/Chrome on Windows), a second button attaches the real PDF.
-    let url = link.getAttribute('href');
+    let url = link.dataset.pdf;
     try { url = new URL(url, location.href).href; } catch (e) { /* keep the relative path */ }
     const subject = d.name + ' ' + (d.manualLabel || 'user manual');
     document.getElementById('emailLink').href = 'mailto:?subject=' + encodeURIComponent(subject) +
@@ -441,7 +444,7 @@
   async function shareManual() {
     const d = POC[deviceSel.value];
     const msg = document.getElementById('shareMsg');
-    const href = document.getElementById('manualLink').href;
+    const href = new URL(document.getElementById('manualLink').dataset.pdf, location.href).href;
     const subject = d.name + ' ' + (d.manualLabel || 'user manual');
     msg.textContent = 'Preparing PDF…';
     try {
@@ -542,6 +545,29 @@
   buildCylinders();
   buildDevices();
   setMode('adult');
+
+  // Returning from the manual viewer: put the POC tab back the way it was left.
+  document.getElementById('manualLink').addEventListener('click', () => {
+    try {
+      sessionStorage.setItem('pocState', JSON.stringify({
+        device: deviceSel.value, batt: battSel.value, setting: settingSel.selectedOptions[0].text
+      }));
+    } catch (e) { /* storage unavailable: just return to the default view */ }
+  });
+  try {
+    const saved = JSON.parse(sessionStorage.getItem('pocState') || 'null');
+    sessionStorage.removeItem('pocState');
+    if (saved && POC[saved.device]) {
+      setMode('poc');
+      deviceSel.value = saved.device;
+      buildBatteries();
+      battSel.value = saved.batt;
+      buildSettings();
+      const opt = [...settingSel.options].find(o => o.text === saved.setting);
+      if (opt) settingSel.value = opt.value;
+      render();
+    }
+  } catch (e) { /* ignore */ }
 </script>
 </body>
 </html>
