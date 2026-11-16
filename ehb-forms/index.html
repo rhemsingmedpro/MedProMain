@@ -3447,7 +3447,7 @@ async function sharePdf(mode){
     console.error(err);
     setStatus(globalStatus, `Could not open the share sheet: ${err.message}. Your forms are still on screen — tap the button again.`, 'err');
   }
-});
+}
 
 document.getElementById('btn-reset').addEventListener('click', ()=>{
   if (lastGenerated && !emailedConfirmed &&
