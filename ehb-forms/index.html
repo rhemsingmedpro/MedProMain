@@ -397,6 +397,7 @@
   <!-- Shown after generation: step 1 = saved on the phone, step 2 = email it. -->
   <div id="send-panel" hidden style="border:2px solid var(--border,#999);border-radius:10px;padding:14px;margin:12px 0;">
     <div id="send-filename" style="font-size:14px;font-weight:700;word-break:break-word;margin-bottom:10px;"></div>
+    <div style="font-size:11px;opacity:.5;margin-bottom:6px;">Send panel v3 · share sheet: <span id="send-support"></span></div>
     <div style="font-weight:700;margin-bottom:6px;">Step 1 — Save a copy to this phone <span id="save-tick" hidden>✓</span></div>
     <button class="btn secondary" id="btn-save" style="width:100%;font-size:17px;padding:14px;">Save to Files</button>
     <div style="font-size:13px;opacity:.8;margin:8px 0 14px;">Tap, choose <b>Save to Files</b> in the list, pick a folder (e.g. On My iPhone), then tap <b>Save</b>.</div>
@@ -3266,6 +3267,7 @@ function offerShare(bytes, filename){
   lastGenerated = { bytes, filename };
   emailedConfirmed = false;
   document.getElementById('send-filename').textContent = filename;
+  document.getElementById('send-support').textContent = SHARE_SUPPORTED ? 'available' : 'NOT available';
   document.getElementById('btn-share').hidden = !SHARE_SUPPORTED;
   document.getElementById('btn-save').hidden = !SHARE_SUPPORTED;
   document.getElementById('save-tick').hidden = true;
