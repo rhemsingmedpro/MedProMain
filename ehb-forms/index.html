@@ -389,11 +389,27 @@
   <div id="accordion"></div>
 
   <div class="toprow" style="justify-content:flex-end;">
-    <button class="btn" id="btn-share" hidden>Share / email the PDF</button>
     <button class="btn secondary" id="btn-generate-all">Generate completed forms</button>
   </div>
 
   <div class="status-msg" id="global-status"></div>
+
+  <!-- Shown after generation: step 1 = saved on the phone, step 2 = email it. -->
+  <div id="send-panel" hidden style="border:2px solid var(--border,#999);border-radius:10px;padding:14px;margin:12px 0;">
+    <div style="font-weight:700;margin-bottom:6px;">Step 1 — Saved to this phone ✓</div>
+    <div id="send-filename" style="font-size:14px;word-break:break-word;margin-bottom:4px;"></div>
+    <div style="font-size:13px;opacity:.8;margin-bottom:12px;">Find it in the Files app → Downloads if you ever need it again.</div>
+    <div style="font-weight:700;margin-bottom:6px;">Step 2 — Email it</div>
+    <button class="btn" id="btn-share" style="width:100%;font-size:17px;padding:14px;">Email via Outlook</button>
+    <div style="font-size:13px;opacity:.8;margin-top:8px;">Tap the button, then choose <b>Outlook</b> in the list. The PDF is attached automatically.</div>
+    <div id="send-fallback" hidden style="font-size:13px;margin-top:8px;">
+      This browser can't attach files directly. Open Outlook, start a new email, tap the paperclip, choose <b>Browse</b> and select the file named above from Downloads.
+    </div>
+    <div id="send-done" hidden style="margin-top:10px;">
+      <button class="btn secondary" id="btn-sent-confirm" style="width:100%;">I've sent the email</button>
+    </div>
+    <div id="send-confirmed" hidden style="margin-top:10px;font-weight:700;">✓ Marked as emailed.</div>
+  </div>
 
   <!-- Barcode scanner overlay. Camera only starts when this opens. -->
   <div class="scan-scrim" id="scan-scrim" hidden>
@@ -3243,17 +3259,33 @@ function canShareFiles(){
 
 const SHARE_SUPPORTED = canShareFiles();
 
+let emailedConfirmed = false;
+
 function offerShare(bytes, filename){
   lastGenerated = { bytes, filename };
-  const btn = document.getElementById('btn-share');
-  if (btn) btn.hidden = !SHARE_SUPPORTED;
+  emailedConfirmed = false;
+  document.getElementById('send-filename').textContent = filename;
+  document.getElementById('btn-share').hidden = !SHARE_SUPPORTED;
+  document.getElementById('send-fallback').hidden = SHARE_SUPPORTED;
+  document.getElementById('send-done').hidden = false;
+  document.getElementById('send-confirmed').hidden = true;
+  document.getElementById('send-panel').hidden = false;
+  document.getElementById('send-panel').scrollIntoView({ behavior:'smooth', block:'center' });
 }
 
 function clearShare(){
   lastGenerated = null;
-  const btn = document.getElementById('btn-share');
-  if (btn) btn.hidden = true;
+  emailedConfirmed = false;
+  document.getElementById('send-panel').hidden = true;
 }
+
+function markEmailed(){
+  emailedConfirmed = true;
+  document.getElementById('send-done').hidden = true;
+  document.getElementById('send-confirmed').hidden = false;
+}
+
+document.getElementById('btn-sent-confirm').addEventListener('click', markEmailed);
 
 function setStatus(el, msg, kind){
   el.textContent = msg;
@@ -3351,7 +3383,7 @@ document.getElementById('btn-generate-all').addEventListener('click', async ()=>
     offerShare(outBytes, filename);
     setStatus(globalStatus,
       `Combined PDF generated with ${included.length} form(s): ${included.join(', ')}.`
-      + (SHARE_SUPPORTED ? ' Use “Share / email the PDF” to send it straight to Outlook.' : ''),
+      + ' The PDF is saved on this phone — now use Step 2 to email it.',
       'ok');
   }catch(err){
     console.error(err);
@@ -3376,7 +3408,10 @@ document.getElementById('btn-share').addEventListener('click', async ()=>{
     }
     // Most iOS mail targets ignore title and text when a file is attached, so
     // don't rely on the subject arriving; the attachment is the point.
-    await navigator.share({ files:[file], title: lastGenerated.filename });
+    await navigator.share({ files:[file], title: lastGenerated.filename, text: lastGenerated.filename.replace(/\.pdf$/i,'') });
+    // share() resolving means a target was chosen, not that the email was
+    // sent, so the user still confirms it themselves.
+    setStatus(globalStatus, 'Finish and send the email in Outlook, then come back and tap “I’ve sent the email”.', 'info');
   }catch(err){
     // Dismissing the share sheet throws AbortError. That's a normal outcome,
     // not something to shout about.
@@ -3387,6 +3422,8 @@ document.getElementById('btn-share').addEventListener('click', async ()=>{
 });
 
 document.getElementById('btn-reset').addEventListener('click', ()=>{
+  if (lastGenerated && !emailedConfirmed &&
+      !confirm('The PDF has not been marked as emailed yet. It is saved in Downloads on this phone, but clearing now removes the signatures from this page.\n\nClear anyway?')) return;
   if (!confirm('Clear all profile info, form entries, and signatures for this patient?')) return;
   document.querySelectorAll('main input[type=text], main input[type=tel], main textarea').forEach(i=> i.value='');
   document.getElementById('p-province').value = 'BC';
