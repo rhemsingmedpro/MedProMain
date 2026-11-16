@@ -3219,13 +3219,20 @@ function extractProtectedFieldsAsStaticText(pdfDoc, pdfForm, fieldNames){
   return staticDraws;
 }
 
-function downloadBytes(bytes, filename){
-  const blob = new Blob([bytes], { type:'application/pdf' });
+/* EXPERIMENT: on devices with a share sheet (iPhone), also try a forced
+   download on Generate. A generic MIME type stops Safari from opening its PDF
+   viewer, so it should offer a normal Download prompt and save to Files →
+   Downloads. Set to false to go back to the two-button flow only. */
+const AUTO_DOWNLOAD_ON_SHARE_DEVICES = true;
+
+function downloadBytes(bytes, filename, force){
+  const blob = new Blob([bytes], { type: force ? 'application/octet-stream' : 'application/pdf' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url; a.download = filename;
   document.body.appendChild(a); a.click(); a.remove();
-  URL.revokeObjectURL(url);
+  // iOS can need the URL alive a moment after the click.
+  setTimeout(()=> URL.revokeObjectURL(url), 60000);
 }
 
 /* ---------------------------------------------------------------------
@@ -3388,11 +3395,14 @@ document.getElementById('btn-generate-all').addEventListener('click', async ()=>
     // Where the share sheet works (iPhone) don't auto-download: Safari would
     // just open a viewer and navigate away from the form. The panel's buttons
     // do the saving and emailing explicitly instead.
-    if (!SHARE_SUPPORTED) downloadBytes(outBytes, filename);
+    if (!SHARE_SUPPORTED) downloadBytes(outBytes, filename, false);
+    else if (AUTO_DOWNLOAD_ON_SHARE_DEVICES) downloadBytes(outBytes, filename, true);
     offerShare(outBytes, filename);
     setStatus(globalStatus,
       `Combined PDF generated with ${included.length} form(s): ${included.join(', ')}.`
-      + (SHARE_SUPPORTED ? ' Now use Step 1 to save it, then Step 2 to email it.' : ' It was downloaded to this device.'),
+      + (!SHARE_SUPPORTED ? ' It was downloaded to this device.'
+        : AUTO_DOWNLOAD_ON_SHARE_DEVICES ? ' If Safari asks, tap Download to save it. Then use Step 2 to email it.'
+        : ' Now use Step 1 to save it, then Step 2 to email it.'),
       'ok');
   }catch(err){
     console.error(err);
