@@ -396,12 +396,13 @@
 
   <!-- Shown after generation: step 1 = saved on the phone, step 2 = email it. -->
   <div id="send-panel" hidden style="border:2px solid var(--border,#999);border-radius:10px;padding:14px;margin:12px 0;">
-    <div style="font-weight:700;margin-bottom:6px;">Step 1 — Saved to this phone ✓</div>
-    <div id="send-filename" style="font-size:14px;word-break:break-word;margin-bottom:4px;"></div>
-    <div style="font-size:13px;opacity:.8;margin-bottom:12px;">Find it in the Files app → Downloads if you ever need it again.</div>
-    <div style="font-weight:700;margin-bottom:6px;">Step 2 — Email it</div>
+    <div id="send-filename" style="font-size:14px;font-weight:700;word-break:break-word;margin-bottom:10px;"></div>
+    <div style="font-weight:700;margin-bottom:6px;">Step 1 — Save a copy to this phone <span id="save-tick" hidden>✓</span></div>
+    <button class="btn secondary" id="btn-save" style="width:100%;font-size:17px;padding:14px;">Save to Files</button>
+    <div style="font-size:13px;opacity:.8;margin:8px 0 14px;">Tap, choose <b>Save to Files</b> in the list, pick a folder (e.g. On My iPhone), then tap <b>Save</b>.</div>
+    <div style="font-weight:700;margin-bottom:6px;">Step 2 — Email it <span id="email-tick" hidden>✓</span></div>
     <button class="btn" id="btn-share" style="width:100%;font-size:17px;padding:14px;">Email via Outlook</button>
-    <div style="font-size:13px;opacity:.8;margin-top:8px;">Tap the button, then choose <b>Outlook</b> in the list. The PDF is attached automatically.</div>
+    <div style="font-size:13px;opacity:.8;margin-top:8px;">Tap, then choose <b>Outlook</b> in the list. The PDF is attached automatically.</div>
     <div id="send-fallback" hidden style="font-size:13px;margin-top:8px;">
       This browser can't attach files directly. Open Outlook, start a new email, tap the paperclip, choose <b>Browse</b> and select the file named above from Downloads.
     </div>
@@ -3266,6 +3267,9 @@ function offerShare(bytes, filename){
   emailedConfirmed = false;
   document.getElementById('send-filename').textContent = filename;
   document.getElementById('btn-share').hidden = !SHARE_SUPPORTED;
+  document.getElementById('btn-save').hidden = !SHARE_SUPPORTED;
+  document.getElementById('save-tick').hidden = true;
+  document.getElementById('email-tick').hidden = true;
   document.getElementById('send-fallback').hidden = SHARE_SUPPORTED;
   document.getElementById('send-done').hidden = false;
   document.getElementById('send-confirmed').hidden = true;
@@ -3379,11 +3383,14 @@ document.getElementById('btn-generate-all').addEventListener('click', async ()=>
     const lastName = (profile.lastName || 'PATIENT').trim();
     const firstName = (profile.firstName || '').trim();
     const filename = `${todayStr} ${lastName}${firstName ? ', ' + firstName : ''} Insurance Forms.pdf`;
-    downloadBytes(outBytes, filename);
+    // Where the share sheet works (iPhone) don't auto-download: Safari would
+    // just open a viewer and navigate away from the form. The panel's buttons
+    // do the saving and emailing explicitly instead.
+    if (!SHARE_SUPPORTED) downloadBytes(outBytes, filename);
     offerShare(outBytes, filename);
     setStatus(globalStatus,
       `Combined PDF generated with ${included.length} form(s): ${included.join(', ')}.`
-      + ' The PDF is saved on this phone — now use Step 2 to email it.',
+      + (SHARE_SUPPORTED ? ' Now use Step 1 to save it, then Step 2 to email it.' : ' It was downloaded to this device.'),
       'ok');
   }catch(err){
     console.error(err);
@@ -3394,7 +3401,10 @@ document.getElementById('btn-generate-all').addEventListener('click', async ()=>
 
 /* The click handler is deliberately thin: everything slow already happened
    during generation, so share() runs inside the gesture that triggered it. */
-document.getElementById('btn-share').addEventListener('click', async ()=>{
+document.getElementById('btn-save').addEventListener('click', ()=> sharePdf('save'));
+document.getElementById('btn-share').addEventListener('click', ()=> sharePdf('email'));
+
+async function sharePdf(mode){
   const globalStatus = document.getElementById('global-status');
   if (!lastGenerated){
     setStatus(globalStatus, 'Generate the forms first, then share.', 'err');
@@ -3403,7 +3413,7 @@ document.getElementById('btn-share').addEventListener('click', async ()=>{
   try{
     const file = new File([lastGenerated.bytes], lastGenerated.filename, { type:'application/pdf' });
     if (!navigator.canShare || !navigator.canShare({ files:[file] })){
-      setStatus(globalStatus, 'This device cannot share files — use the downloaded copy instead.', 'err');
+      setStatus(globalStatus, 'This device cannot share files — try Generate again to download a copy.', 'err');
       return;
     }
     // Most iOS mail targets ignore title and text when a file is attached, so
@@ -3411,19 +3421,25 @@ document.getElementById('btn-share').addEventListener('click', async ()=>{
     await navigator.share({ files:[file], title: lastGenerated.filename, text: lastGenerated.filename.replace(/\.pdf$/i,'') });
     // share() resolving means a target was chosen, not that the email was
     // sent, so the user still confirms it themselves.
-    setStatus(globalStatus, 'Finish and send the email in Outlook, then come back and tap “I’ve sent the email”.', 'info');
+    if (mode === 'save'){
+      document.getElementById('save-tick').hidden = false;
+      setStatus(globalStatus, 'Now use Step 2 to email it.', 'info');
+    } else {
+      document.getElementById('email-tick').hidden = false;
+      setStatus(globalStatus, 'Finish and send the email in Outlook, then come back and tap “I’ve sent the email”.', 'info');
+    }
   }catch(err){
     // Dismissing the share sheet throws AbortError. That's a normal outcome,
     // not something to shout about.
     if (err && err.name === 'AbortError') return;
     console.error(err);
-    setStatus(globalStatus, `Could not open the share sheet: ${err.message}. The PDF has already been downloaded.`, 'err');
+    setStatus(globalStatus, `Could not open the share sheet: ${err.message}. Your forms are still on screen — tap the button again.`, 'err');
   }
 });
 
 document.getElementById('btn-reset').addEventListener('click', ()=>{
   if (lastGenerated && !emailedConfirmed &&
-      !confirm('The PDF has not been marked as emailed yet. It is saved in Downloads on this phone, but clearing now removes the signatures from this page.\n\nClear anyway?')) return;
+      !confirm('The PDF has not been marked as emailed yet. Clearing now removes the signatures from this page.\n\nClear anyway?')) return;
   if (!confirm('Clear all profile info, form entries, and signatures for this patient?')) return;
   document.querySelectorAll('main input[type=text], main input[type=tel], main textarea').forEach(i=> i.value='');
   document.getElementById('p-province').value = 'BC';
